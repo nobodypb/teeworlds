@@ -1224,9 +1224,6 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 				}
 			}
 
-			if ((Target - m_GameTime.Get(Now)) / 1000 < g_Config.m_ClSetPing)
-				Target = m_GameTime.Get(Now) + g_Config.m_ClSetPing * 1000;
-
 			if(Target)
 				m_PredictedTime.Update(&m_InputtimeMarginGraph, Target, TimeLeft, 1);
 		}
