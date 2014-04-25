@@ -11,7 +11,14 @@ public:
 	CMsgPacker(int Type)
 	{
 		Reset();
-		AddInt(Type);
+		if (Type < 31)
+			AddInt(Type);
+		else
+		{
+			AddInt(31);
+			AddString("ExtMsg", 6);
+			AddInt(Type - 31);
+		}
 	}
 };
 

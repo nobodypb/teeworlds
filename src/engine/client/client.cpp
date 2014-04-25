@@ -1526,6 +1526,15 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 	}
 	else
 	{
+		//Check for ExtMsg
+		if (Msg == 31)
+		{
+			const char* buf = Unpacker.GetString();
+
+			if (strcmp(buf, "ExtMsg") == 0)
+				Msg = Unpacker.GetInt() + 31;
+		}
+
 		// game message
 		if(m_DemoRecorder.IsRecording())
 			m_DemoRecorder.RecordMessage(pPacket->m_pData, pPacket->m_DataSize);

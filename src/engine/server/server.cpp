@@ -1160,6 +1160,15 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 	}
 	else
 	{
+		//Check for ExtMsg
+		if (Msg == 31)
+		{
+			const char* buf = Unpacker.GetString();
+
+			if (strcmp(buf, "ExtMsg") == 0)
+				Msg = Unpacker.GetInt() + 31;
+		}
+
 		// game message
 		if(m_aClients[ClientID].m_State >= CClient::STATE_READY)
 			GameServer()->OnMessage(Msg, &Unpacker, ClientID);
