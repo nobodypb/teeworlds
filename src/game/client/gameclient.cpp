@@ -19,6 +19,8 @@
 #include <base/math.h>
 #include <base/vmath.h>
 
+#include <engine/autoupdate.h>
+
 #include <game/localization.h>
 #include <game/version.h>
 #include "render.h"
@@ -114,6 +116,7 @@ void CGameClient::OnConsoleInit()
 	m_pDemoPlayer = Kernel()->RequestInterface<IDemoPlayer>();
 	m_pDemoRecorder = Kernel()->RequestInterface<IDemoRecorder>();
 	m_pServerBrowser = Kernel()->RequestInterface<IServerBrowser>();
+	m_pAutoUpdate = Kernel()->RequestInterface<IAutoUpdate>();
 	m_pEditor = Kernel()->RequestInterface<IEditor>();
 	m_pFriends = Kernel()->RequestInterface<IFriends>();
 
@@ -270,6 +273,33 @@ void CGameClient::OnInit()
 	for(int i = m_All.m_Num-1; i >= 0; --i)
 		m_All.m_paComponents[i]->OnInit();
 
+	// auto update
+	char aBuf[256];
+	if (g_Config.m_hcAutoUpdate)
+	{
+		str_format(aBuf, sizeof(aBuf), "Checking updates, please wait....");
+		g_GameClient.m_pMenus->RenderUpdating(aBuf);
+		AutoUpdate()->CheckUpdates(m_pMenus);
+		if (AutoUpdate()->Updated())
+		{
+			if (AutoUpdate()->NeedResetClient())
+			{
+				Client()->Quit();
+				return;
+			}
+			else
+			{
+				str_format(aBuf, sizeof(aBuf), "H-Client updated successfully :)");
+				g_GameClient.m_pMenus->RenderUpdating(aBuf);
+			}
+		}
+		else
+		{
+			str_format(aBuf, sizeof(aBuf), "Not need be update :)");
+			g_GameClient.m_pMenus->RenderUpdating(aBuf);
+		}
+	}
+
 	// setup load amount// load textures
 	for(int i = 0; i < g_pData->m_NumImages; i++)
 	{
@@ -281,14 +311,15 @@ void CGameClient::OnInit()
 		m_All.m_paComponents[i]->OnReset();
 
 	int64 End = time_get();
-	char aBuf[256];
 	str_format(aBuf, sizeof(aBuf), "initialisation finished after %.2fms", ((End-Start)*1000)/(float)time_freq());
 	Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "gameclient", aBuf);
 
 	m_ServerMode = SERVERMODE_PURE;
 
-	m_DDRaceMsgSent = false;
-	m_ShowOthers = -1;
+	m_DDRaceMsgSent[0] = false;
+	m_DDRaceMsgSent[1] = false;
+	m_ShowOthers[0] = -1;
+	m_ShowOthers[1] = -1;
 
 	// Set free binds to DDRace binds if it's active
 	if(!g_Config.m_ClDDRaceBindsSet && g_Config.m_ClDDRaceBinds)
@@ -379,8 +410,10 @@ void CGameClient::OnReset()
 	m_Tuning = CTuningParams();
 
 	m_Teams.Reset();
-	m_DDRaceMsgSent = false;
-	m_ShowOthers = -1;
+	m_DDRaceMsgSent[0] = false;
+	m_DDRaceMsgSent[1] = false;
+	m_ShowOthers[0] = -1;
+	m_ShowOthers[1] = -1;
 }
 
 
@@ -1029,15 +1062,15 @@ void CGameClient::OnNewSnapshot()
 		Client()->SendMsg(&Msg, MSGFLAG_RECORD|MSGFLAG_NOSEND);
 	}
 
-	if(!m_DDRaceMsgSent && m_Snap.m_pLocalInfo)
+	if(!m_DDRaceMsgSent[g_Config.m_ClDummy] && m_Snap.m_pLocalInfo)
 	{
 		CMsgPacker Msg(NETMSGTYPE_CL_ISDDNET);
 		Msg.AddInt(CLIENT_VERSIONNR);
 		Client()->SendMsg(&Msg, MSGFLAG_VITAL);
-		m_DDRaceMsgSent = true;
+		m_DDRaceMsgSent[g_Config.m_ClDummy] = true;
 	}
 
-	if(m_ShowOthers == -1 || (m_ShowOthers != -1 && m_ShowOthers != g_Config.m_ClShowOthers))
+	if(m_ShowOthers[g_Config.m_ClDummy] == -1 || (m_ShowOthers[g_Config.m_ClDummy] != -1 && m_ShowOthers[g_Config.m_ClDummy] != g_Config.m_ClShowOthers))
 	{
 		// no need to send, default settings
 		//if(!(m_ShowOthers == -1 && g_Config.m_ClShowOthers))
@@ -1048,7 +1081,7 @@ void CGameClient::OnNewSnapshot()
 		}
 
 		// update state
-		m_ShowOthers = g_Config.m_ClShowOthers;
+		m_ShowOthers[g_Config.m_ClDummy] = g_Config.m_ClShowOthers;
 	}
 }
 

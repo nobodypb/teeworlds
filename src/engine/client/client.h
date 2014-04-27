@@ -63,6 +63,7 @@ class CClient : public IClient, public CDemoPlayer::IListner
 	IEngineMap *m_pMap;
 	IConsole *m_pConsole;
 	IStorage *m_pStorage;
+	IAutoUpdate *m_pAutoUpdate;
 	IEngineMasterServer *m_pMasterServer;
 
 	enum
@@ -71,10 +72,11 @@ class CClient : public IClient, public CDemoPlayer::IListner
 		PREDICTION_MARGIN=1000/50/2, // magic network prediction value
 	};
 
-	class CNetClient m_NetClient;
+	class CNetClient m_NetClient[2];
 	class CDemoPlayer m_DemoPlayer;
 	class CDemoRecorder m_DemoRecorder;
 	class CServerBrowser m_ServerBrowser;
+	class CAutoUpdate m_AutoUpdate;
 	class CFriends m_Friends;
 	class CMapChecker m_MapChecker;
 
@@ -100,7 +102,7 @@ class CClient : public IClient, public CDemoPlayer::IListner
 
 	int m_AckGameTick;
 	int m_CurrentRecvTick;
-	int m_RconAuthed;
+	int m_RconAuthed[2];
 	int m_UseTempRconCommands;
 
 	// version-checking
@@ -188,6 +190,7 @@ public:
 	IGameClient *GameClient() { return m_pGameClient; }
 	IEngineMasterServer *MasterServer() { return m_pMasterServer; }
 	IStorage *Storage() { return m_pStorage; }
+	IAutoUpdate *AutoUpdate() { return m_pAutoUpdate; }
 
 	CClient();
 
@@ -199,7 +202,7 @@ public:
 	void SendEnterGame();
 	void SendReady();
 
-	virtual bool RconAuthed() { return m_RconAuthed != 0; }
+	virtual bool RconAuthed() { return m_RconAuthed[g_Config.m_ClDummy] != 0; }
 	virtual bool UseTempRconCommands() { return m_UseTempRconCommands != 0; }
 	void RconAuth(const char *pName, const char *pPassword);
 	virtual void Rcon(const char *pCmd);
@@ -230,6 +233,13 @@ public:
 	void DisconnectWithReason(const char *pReason);
 	virtual void Disconnect();
 
+	virtual void DummyDisconnect(const char *pReason);
+	virtual void DummyConnect(bool Info = true, int NetClient = 1);
+	virtual bool DummyConnected();
+	void DummyInfo();
+	int m_DummyConnected;
+	int m_LastDummyConnectTime;
+	int SendMsgExY(CMsgPacker *pMsg, int Flags, bool System=true, int NetClient=1);
 
 	virtual void GetServerInfo(CServerInfo *pServerInfo);
 	void ServerInfoRequest();
@@ -278,6 +288,10 @@ public:
 
 	static void Con_Connect(IConsole::IResult *pResult, void *pUserData);
 	static void Con_Disconnect(IConsole::IResult *pResult, void *pUserData);
+
+	static void Con_DummyConnect(IConsole::IResult *pResult, void *pUserData);
+	static void Con_DummyDisconnect(IConsole::IResult *pResult, void *pUserData);
+
 	static void Con_Quit(IConsole::IResult *pResult, void *pUserData);
 	static void Con_Minimize(IConsole::IResult *pResult, void *pUserData);
 	static void Con_Ping(IConsole::IResult *pResult, void *pUserData);

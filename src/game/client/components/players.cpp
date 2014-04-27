@@ -590,14 +590,14 @@ void CPlayers::RenderPlayer(
 				if(Hit)
 					break;
 
-				NewPos.x = round(NewPos.x);
-				NewPos.y = round(NewPos.y);
+				NewPos.x = round_to_int(NewPos.x);
+				NewPos.y = round_to_int(NewPos.y);
 
 				if (OldPos == NewPos)
 					break;
 
-				ExDirection.x = round(ExDirection.x*256.0f) / 256.0f;
-				ExDirection.y = round(ExDirection.y*256.0f) / 256.0f;
+				ExDirection.x = round_to_int(ExDirection.x*256.0f) / 256.0f;
+				ExDirection.y = round_to_int(ExDirection.y*256.0f) / 256.0f;
 			} while (!doBreak);
 
 			IGraphics::CLineItem LineItem(Position.x, Position.y, finishPos.x, finishPos.y);
@@ -783,6 +783,29 @@ void CPlayers::RenderPlayer(
 	{
 		RenderInfo.m_ColorBody.a = 0.4f;
 		RenderInfo.m_ColorFeet.a = 0.4f;
+	}
+
+	if (g_Config.m_ClShowDirection && (!pInfo.m_Local || DemoPlayer()->IsPlaying()))
+	{
+		if (Player.m_Direction != 0)
+		{
+			Graphics()->TextureSet(g_pData->m_aImages[IMAGE_ARROW].m_Id);
+			Graphics()->QuadsBegin();
+			IGraphics::CQuadItem QuadItem(Position.x-15, Position.y - 70, 22, 22);
+			if (Player.m_Direction == -1)
+				Graphics()->QuadsSetRotation(GetAngle(vec2(1,0))+pi);
+			Graphics()->QuadsDraw(&QuadItem, 1);
+			Graphics()->QuadsEnd();
+		}
+		if (Player.m_Jumped&1)
+		{
+			Graphics()->TextureSet(g_pData->m_aImages[IMAGE_ARROW].m_Id);
+			Graphics()->QuadsBegin();
+			IGraphics::CQuadItem QuadItem(Position.x+15, Position.y - 70, 22, 22);
+			Graphics()->QuadsSetRotation(GetAngle(vec2(0,1))+pi);
+			Graphics()->QuadsDraw(&QuadItem, 1);
+			Graphics()->QuadsEnd();
+		}
 	}
 
 	RenderTools()->RenderTee(&State, &RenderInfo, Player.m_Emote, Direction, Position, OtherTeam);
