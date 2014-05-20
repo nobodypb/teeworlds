@@ -25,14 +25,14 @@ CControls::CControls()
 
 void CControls::OnReset()
 {
-	m_LastData.m_Direction = 0;
+	m_LastData[g_Config.m_ClDummy].m_Direction = 0;
 	//m_LastData.m_Hook = 0;
 	// simulate releasing the fire button
-	if((m_LastData.m_Fire&1) != 0)
-		m_LastData.m_Fire++;
-	m_LastData.m_Fire &= INPUT_STATE_MASK;
-	m_LastData.m_Jump = 0;
-	m_InputData = m_LastData;
+	if((m_LastData[g_Config.m_ClDummy].m_Fire&1) != 0)
+		m_LastData[g_Config.m_ClDummy].m_Fire++;
+	m_LastData[g_Config.m_ClDummy].m_Fire &= INPUT_STATE_MASK;
+	m_LastData[g_Config.m_ClDummy].m_Jump = 0;
+	m_InputData[g_Config.m_ClDummy] = m_LastData[g_Config.m_ClDummy];
 
 	m_InputDirectionLeft[g_Config.m_ClDummy] = 0;
 	m_InputDirectionRight[g_Config.m_ClDummy] = 0;
