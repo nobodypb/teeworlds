@@ -116,7 +116,9 @@ void CGameClient::OnConsoleInit()
 	m_pDemoPlayer = Kernel()->RequestInterface<IDemoPlayer>();
 	m_pDemoRecorder = Kernel()->RequestInterface<IDemoRecorder>();
 	m_pServerBrowser = Kernel()->RequestInterface<IServerBrowser>();
+#if !defined(CONF_PLATFORM_MACOSX)
 	m_pAutoUpdate = Kernel()->RequestInterface<IAutoUpdate>();
+#endif
 	m_pEditor = Kernel()->RequestInterface<IEditor>();
 	m_pFriends = Kernel()->RequestInterface<IFriends>();
 
@@ -233,6 +235,16 @@ void CGameClient::OnConsoleInit()
 	Console()->Chain("player_color_feet", ConchainSpecialInfoupdate, this);
 	Console()->Chain("player_skin", ConchainSpecialInfoupdate, this);
 
+	Console()->Chain("dummy_name", ConchainSpecialDummyInfoupdate, this);
+	Console()->Chain("dummy_clan", ConchainSpecialDummyInfoupdate, this);
+	Console()->Chain("dummy_country", ConchainSpecialDummyInfoupdate, this);
+	Console()->Chain("dummy_use_custom_color", ConchainSpecialDummyInfoupdate, this);
+	Console()->Chain("dummy_color_body", ConchainSpecialDummyInfoupdate, this);
+	Console()->Chain("dummy_color_feet", ConchainSpecialDummyInfoupdate, this);
+	Console()->Chain("dummy_skin", ConchainSpecialDummyInfoupdate, this);
+
+	Console()->Chain("cl_dummy", ConchainSpecialDummy, this);
+
 	//
 	m_SuppressEvents = false;
 }
@@ -273,32 +285,7 @@ void CGameClient::OnInit()
 	for(int i = m_All.m_Num-1; i >= 0; --i)
 		m_All.m_paComponents[i]->OnInit();
 
-	// auto update
 	char aBuf[256];
-	if (g_Config.m_hcAutoUpdate)
-	{
-		str_format(aBuf, sizeof(aBuf), "Checking updates, please wait....");
-		g_GameClient.m_pMenus->RenderUpdating(aBuf);
-		AutoUpdate()->CheckUpdates(m_pMenus);
-		if (AutoUpdate()->Updated())
-		{
-			if (AutoUpdate()->NeedResetClient())
-			{
-				Client()->Quit();
-				return;
-			}
-			else
-			{
-				str_format(aBuf, sizeof(aBuf), "H-Client updated successfully :)");
-				g_GameClient.m_pMenus->RenderUpdating(aBuf);
-			}
-		}
-		else
-		{
-			str_format(aBuf, sizeof(aBuf), "Not need be update :)");
-			g_GameClient.m_pMenus->RenderUpdating(aBuf);
-		}
-	}
 
 	// setup load amount// load textures
 	for(int i = 0; i < g_pData->m_NumImages; i++)
@@ -407,7 +394,7 @@ void CGameClient::OnReset()
 	m_DemoSpecID = SPEC_FREEVIEW;
 	m_FlagDropTick[TEAM_RED] = 0;
 	m_FlagDropTick[TEAM_BLUE] = 0;
-	m_Tuning = CTuningParams();
+	m_Tuning[g_Config.m_ClDummy] = CTuningParams();
 
 	m_Teams.Reset();
 	m_DDRaceMsgSent[0] = false;
@@ -542,6 +529,9 @@ void CGameClient::OnRender()
 	m_NewTick = false;
 	m_NewPredictedTick = false;
 
+	if(g_Config.m_ClDummy && !Client()->DummyConnected())
+		g_Config.m_ClDummy = 0;
+
 	// check if client info has to be resent
 	if(m_LastSendInfo && Client()->State() == IClient::STATE_ONLINE && m_Snap.m_LocalClientID >= 0 && !m_pMenus->IsActive() && m_LastSendInfo+time_freq()*6 < time_get())
 	{
@@ -555,10 +545,17 @@ void CGameClient::OnRender()
 			g_Config.m_PlayerColorBody != m_aClients[m_Snap.m_LocalClientID].m_ColorBody ||
 			g_Config.m_PlayerColorFeet != m_aClients[m_Snap.m_LocalClientID].m_ColorFeet)))
 		{
-			SendInfo(false);
+			if (!g_Config.m_ClDummy)
+				SendInfo(false);
 		}
 		m_LastSendInfo = 0;
 	}
+}
+
+void CGameClient::OnDummyDisconnect()
+{
+	m_DDRaceMsgSent[1] = false;
+	m_ShowOthers[1] = -1;
 }
 
 void CGameClient::OnRelease()
@@ -568,10 +565,10 @@ void CGameClient::OnRelease()
 		m_All.m_paComponents[i]->OnRelease();
 }
 
-void CGameClient::OnMessage(int MsgId, CUnpacker *pUnpacker)
+void CGameClient::OnMessage(int MsgId, CUnpacker *pUnpacker, bool IsDummy)
 {
 	// special messages
-	if(MsgId == NETMSGTYPE_SV_EXTRAPROJECTILE)
+	if(MsgId == NETMSGTYPE_SV_EXTRAPROJECTILE && !IsDummy)
 	{
 		int Num = pUnpacker->GetInt();
 
@@ -606,10 +603,10 @@ void CGameClient::OnMessage(int MsgId, CUnpacker *pUnpacker)
 		m_ServerMode = SERVERMODE_PURE;
 
 		// apply new tuning
-		m_Tuning = NewTuning;
+		m_Tuning[IsDummy ? !g_Config.m_ClDummy : g_Config.m_ClDummy] = NewTuning;
 		return;
 	}
-
+	
 	void *pRawMsg = m_NetObjHandler.SecureUnpackMsg(MsgId, pUnpacker);
 	if(!pRawMsg)
 	{
@@ -617,6 +614,25 @@ void CGameClient::OnMessage(int MsgId, CUnpacker *pUnpacker)
 		str_format(aBuf, sizeof(aBuf), "dropped weird message '%s' (%d), failed on '%s'", m_NetObjHandler.GetMsgName(MsgId), MsgId, m_NetObjHandler.FailedMsgOn());
 		Console()->Print(IConsole::OUTPUT_LEVEL_ADDINFO, "client", aBuf);
 		return;
+	}
+
+	if(IsDummy)
+	{
+		if(MsgId == NETMSGTYPE_SV_CHAT
+			&& Client()->m_LocalIDs[0] >= 0
+			&& Client()->m_LocalIDs[1] >= 0)
+		{
+			CNetMsg_Sv_Chat *pMsg = (CNetMsg_Sv_Chat *)pRawMsg;
+
+			if((pMsg->m_Team == 1
+					&& (m_aClients[Client()->m_LocalIDs[0]].m_Team != m_aClients[Client()->m_LocalIDs[1]].m_Team
+						|| m_Teams.Team(Client()->m_LocalIDs[0]) != m_Teams.Team(Client()->m_LocalIDs[1])))
+				|| pMsg->m_Team > 1)
+			{
+				m_pChat->OnMessage(MsgId, pRawMsg);
+			}
+		}
+		return; // no need of all that stuff for the dummy
 	}
 
 	// TODO: this should be done smarter
@@ -1046,42 +1062,50 @@ void CGameClient::OnNewSnapshot()
 	{
 		if(str_comp(CurrentServerInfo.m_aGameType, "DM") != 0 && str_comp(CurrentServerInfo.m_aGameType, "TDM") != 0 && str_comp(CurrentServerInfo.m_aGameType, "CTF") != 0)
 			m_ServerMode = SERVERMODE_MOD;
-		else if(mem_comp(&StandardTuning, &m_Tuning, 33) == 0)
+		else if(mem_comp(&StandardTuning, &m_Tuning[g_Config.m_ClDummy], 33) == 0)
 			m_ServerMode = SERVERMODE_PURE;
 		else
 			m_ServerMode = SERVERMODE_PUREMOD;
 	}
 
 	// add tuning to demo
-	if(DemoRecorder()->IsRecording() && mem_comp(&StandardTuning, &m_Tuning, sizeof(CTuningParams)) != 0)
+	if(DemoRecorder()->IsRecording() && mem_comp(&StandardTuning, &m_Tuning[g_Config.m_ClDummy], sizeof(CTuningParams)) != 0)
 	{
 		CMsgPacker Msg(NETMSGTYPE_SV_TUNEPARAMS);
-		int *pParams = (int *)&m_Tuning;
-		for(unsigned i = 0; i < sizeof(m_Tuning)/sizeof(int); i++)
+		int *pParams = (int *)&m_Tuning[g_Config.m_ClDummy];
+		for(unsigned i = 0; i < sizeof(m_Tuning[0])/sizeof(int); i++)
 			Msg.AddInt(pParams[i]);
 		Client()->SendMsg(&Msg, MSGFLAG_RECORD|MSGFLAG_NOSEND);
 	}
 
-	if(!m_DDRaceMsgSent[g_Config.m_ClDummy] && m_Snap.m_pLocalInfo)
+	if(!m_DDRaceMsgSent[0] && m_Snap.m_pLocalInfo)
 	{
 		CMsgPacker Msg(NETMSGTYPE_CL_ISDDNET);
 		Msg.AddInt(CLIENT_VERSIONNR);
-		Client()->SendMsg(&Msg, MSGFLAG_VITAL);
-		m_DDRaceMsgSent[g_Config.m_ClDummy] = true;
+		Client()->SendMsgExY(&Msg, MSGFLAG_VITAL,false, 0);
+		m_DDRaceMsgSent[0] = true;
 	}
 
-	if(m_ShowOthers[g_Config.m_ClDummy] == -1 || (m_ShowOthers[g_Config.m_ClDummy] != -1 && m_ShowOthers[g_Config.m_ClDummy] != g_Config.m_ClShowOthers))
+	if(!m_DDRaceMsgSent[1] && m_Snap.m_pLocalInfo && Client()->DummyConnected())
+	{
+		CMsgPacker Msg(NETMSGTYPE_CL_ISDDNET);
+		Msg.AddInt(CLIENT_VERSIONNR);
+		Client()->SendMsgExY(&Msg, MSGFLAG_VITAL,false, 1);
+		m_DDRaceMsgSent[1] = true;
+	}
+
+	if(m_ShowOthers[g_Config.m_ClDummy] == -1 || (m_ShowOthers[g_Config.m_ClDummy] != -1 && ((m_ShowOthers[g_Config.m_ClDummy] && !g_Config.m_ClShowOthersAlpha) || (!m_ShowOthers[g_Config.m_ClDummy] && g_Config.m_ClShowOthersAlpha))))
 	{
 		// no need to send, default settings
 		//if(!(m_ShowOthers == -1 && g_Config.m_ClShowOthers))
 		{
 			CNetMsg_Cl_ShowOthers Msg;
-			Msg.m_Show = g_Config.m_ClShowOthers;
+			Msg.m_Show = g_Config.m_ClShowOthersAlpha ? 1 : 0;
 			Client()->SendPackMsg(&Msg, MSGFLAG_VITAL);
 		}
 
 		// update state
-		m_ShowOthers[g_Config.m_ClDummy] = g_Config.m_ClShowOthers;
+		m_ShowOthers[g_Config.m_ClDummy] = g_Config.m_ClShowOthersAlpha ? 1 : 0;
 	}
 }
 
@@ -1113,7 +1137,7 @@ void CGameClient::OnPredict()
 
 	// repredict character
 	CWorldCore World;
-	World.m_Tuning = m_Tuning;
+	World.m_Tuning[g_Config.m_ClDummy] = m_Tuning[g_Config.m_ClDummy];
 
 	// search for players
 	for(int i = 0; i < MAX_CLIENTS; i++)
@@ -1302,7 +1326,9 @@ void CGameClient::SendInfo(bool Start)
 		Msg.m_UseCustomColor = g_Config.m_PlayerUseCustomColor;
 		Msg.m_ColorBody = g_Config.m_PlayerColorBody;
 		Msg.m_ColorFeet = g_Config.m_PlayerColorFeet;
-		Client()->SendPackMsg(&Msg, MSGFLAG_VITAL);
+		CMsgPacker Packer(Msg.MsgID());
+		Msg.Pack(&Packer);
+		Client()->SendMsgExY(&Packer, MSGFLAG_VITAL,false, 0);
 	}
 	else
 	{
@@ -1314,11 +1340,49 @@ void CGameClient::SendInfo(bool Start)
 		Msg.m_UseCustomColor = g_Config.m_PlayerUseCustomColor;
 		Msg.m_ColorBody = g_Config.m_PlayerColorBody;
 		Msg.m_ColorFeet = g_Config.m_PlayerColorFeet;
-		Client()->SendPackMsg(&Msg, MSGFLAG_VITAL);
+		CMsgPacker Packer(Msg.MsgID());
+		Msg.Pack(&Packer);
+		Client()->SendMsgExY(&Packer, MSGFLAG_VITAL,false, 0);
 
 		// activate timer to resend the info if it gets filtered
 		if(!m_LastSendInfo || m_LastSendInfo+time_freq()*5 < time_get())
 			m_LastSendInfo = time_get();
+	}
+}
+
+void CGameClient::SendDummyInfo(bool Start)
+{
+	if(Start)
+	{
+		CNetMsg_Cl_StartInfo Msg;
+		Msg.m_pName = g_Config.m_DummyName;
+		Msg.m_pClan = g_Config.m_DummyClan;
+		Msg.m_Country = g_Config.m_DummyCountry;
+		Msg.m_pSkin = g_Config.m_DummySkin;
+		Msg.m_UseCustomColor = g_Config.m_DummyUseCustomColor;
+		Msg.m_ColorBody = g_Config.m_DummyColorBody;
+		Msg.m_ColorFeet = g_Config.m_DummyColorFeet;
+		CMsgPacker Packer(Msg.MsgID());
+		Msg.Pack(&Packer);
+		Client()->SendMsgExY(&Packer, MSGFLAG_VITAL,false, 1);
+	}
+	else
+	{
+		CNetMsg_Cl_ChangeInfo Msg;
+		Msg.m_pName = g_Config.m_DummyName;
+		Msg.m_pClan = g_Config.m_DummyClan;
+		Msg.m_Country = g_Config.m_DummyCountry;
+		Msg.m_pSkin = g_Config.m_DummySkin;
+		Msg.m_UseCustomColor = g_Config.m_DummyUseCustomColor;
+		Msg.m_ColorBody = g_Config.m_DummyColorBody;
+		Msg.m_ColorFeet = g_Config.m_DummyColorFeet;
+		CMsgPacker Packer(Msg.MsgID());
+		Msg.Pack(&Packer);
+		Client()->SendMsgExY(&Packer, MSGFLAG_VITAL,false, 1);
+
+		// activate timer to resend the info if it gets filtered
+		//if(!m_LastSendInfo || m_LastSendInfo+time_freq()*5 < time_get())
+		//	m_LastSendInfo = time_get();
 	}
 }
 
@@ -1345,6 +1409,21 @@ void CGameClient::ConchainSpecialInfoupdate(IConsole::IResult *pResult, void *pU
 		((CGameClient*)pUserData)->SendInfo(false);
 }
 
+void CGameClient::ConchainSpecialDummyInfoupdate(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData)
+{
+	pfnCallback(pResult, pCallbackUserData);
+	if(pResult->NumArguments())
+		((CGameClient*)pUserData)->SendDummyInfo(false);
+}
+
+void CGameClient::ConchainSpecialDummy(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData)
+{
+	pfnCallback(pResult, pCallbackUserData);
+	if(pResult->NumArguments())
+		if(g_Config.m_ClDummy && !((CGameClient*)pUserData)->Client()->DummyConnected())
+			g_Config.m_ClDummy = 0;
+}
+
 IGameClient *CreateGameClient()
 {
 	return &g_GameClient;
@@ -1356,7 +1435,7 @@ int CGameClient::IntersectCharacter(vec2 HookPos, vec2 NewPos, vec2& NewPos2, in
 	float Distance = 0.0f;
 	int ClosestID = -1;
 
-	if (!m_Tuning.m_PlayerHooking)
+	if (!m_Tuning[g_Config.m_ClDummy].m_PlayerHooking)
 		return ClosestID;
 
 	for (int i=0; i<MAX_CLIENTS; i++)

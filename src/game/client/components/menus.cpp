@@ -18,6 +18,7 @@
 #include <engine/serverbrowser.h>
 #include <engine/storage.h>
 #include <engine/textrender.h>
+#include <engine/autoupdate.h>
 #include <engine/shared/config.h>
 
 #include <game/version.h>
@@ -59,6 +60,7 @@ CMenus::CMenus()
 	m_NeedRestartGraphics = false;
 	m_NeedRestartSound = false;
 	m_NeedSendinfo = false;
+	m_NeedSendDummyinfo = false;
 	m_MenuActive = true;
 	m_UseMouseButtons = true;
 
@@ -953,6 +955,14 @@ int CMenus::Render()
 			pButtonText = Localize("Ok");
 			ExtraAlign = -1;
 		}
+#if !defined(CONF_PLATFORM_MACOSX)
+		else if(m_Popup == POPUP_AUTOUPDATE)
+		{
+			pTitle = Localize("Auto-Update");
+			pExtraText = Localize("An update to DDNet client is available. Do you want to update now? This may restart the client. If an update fails, make sure the client has permissions to modify files.");
+			ExtraAlign = -1;
+		}
+#endif
 
 		CUIRect Box, Part;
 		Box = Screen;
@@ -1004,6 +1014,28 @@ int CMenus::Render()
 			if(DoButton_Menu(&s_ButtonTryAgain, Localize("Yes"), 0, &Yes) || m_EnterPressed)
 				Client()->Quit();
 		}
+#if !defined(CONF_PLATFORM_MACOSX)
+		else if(m_Popup == POPUP_AUTOUPDATE)
+		{
+			CUIRect Yes, No;
+			Box.HSplitBottom(20.f, &Box, &Part);
+			Box.HSplitBottom(24.f, &Box, &Part);
+
+			// buttons
+			Part.VMargin(80.0f, &Part);
+			Part.VSplitMid(&No, &Yes);
+			Yes.VMargin(20.0f, &Yes);
+			No.VMargin(20.0f, &No);
+
+			static int s_ButtonAbort = 0;
+			if(DoButton_Menu(&s_ButtonAbort, Localize("No"), 0, &No) || m_EscapePressed)
+				m_Popup = POPUP_NONE;
+
+			static int s_ButtonTryAgain = 0;
+			if(DoButton_Menu(&s_ButtonTryAgain, Localize("Yes"), 0, &Yes) || m_EnterPressed)
+				m_pClient->AutoUpdate()->DoUpdates(this);
+		}
+#endif
 		else if(m_Popup == POPUP_PASSWORD)
 		{
 			CUIRect Label, TextBox, TryAgain, Abort;
@@ -1350,6 +1382,12 @@ void CMenus::SetActive(bool Active)
 		{
 			m_pClient->SendInfo(false);
 			m_NeedSendinfo = false;
+		}
+
+		if(m_NeedSendDummyinfo)
+		{
+			m_pClient->SendDummyInfo(false);
+			m_NeedSendDummyinfo = false;
 		}
 
 		if(Client()->State() == IClient::STATE_ONLINE)

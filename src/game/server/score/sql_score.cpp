@@ -224,7 +224,8 @@ void CSqlScore::LoadScoreThread(void *pUser)
 				float time = (float)pData->m_pSqlData->m_pResults->getDouble("Time");
 				pData->m_pSqlData->PlayerData(pData->m_ClientID)->m_BestTime = time;
 				pData->m_pSqlData->PlayerData(pData->m_ClientID)->m_CurrentTime = time;
-				pData->m_pSqlData->m_pGameServer->m_apPlayers[pData->m_ClientID]->m_Score = -time;
+				if(pData->m_pSqlData->m_pGameServer->m_apPlayers[pData->m_ClientID])
+					pData->m_pSqlData->m_pGameServer->m_apPlayers[pData->m_ClientID]->m_Score = -time;
 
 				char aColumn[8];
 				if(g_Config.m_SvCheckpointSave)
@@ -428,8 +429,14 @@ void CSqlScore::MapVoteThread(void *pUser)
 			pData->m_pSqlData->m_pResults = pData->m_pSqlData->m_pStatement->executeQuery(aBuf);
 
 			CPlayer *pPlayer = pData->m_pSqlData->m_pGameServer->m_apPlayers[pData->m_ClientID];
+
 			int64 Now = pData->m_pSqlData->Server()->Tick();
-			int Timeleft = pPlayer->m_LastVoteCall + pData->m_pSqlData->Server()->TickSpeed()*60 - Now;
+			int Timeleft = 0;
+
+			if(!pPlayer)
+				goto end;
+
+			Timeleft = pPlayer->m_LastVoteCall + pData->m_pSqlData->Server()->TickSpeed()*g_Config.m_SvVoteDelay - Now;
 
 			if(pData->m_pSqlData->m_pResults->rowsCount() != 1)
 			{
@@ -441,7 +448,6 @@ void CSqlScore::MapVoteThread(void *pUser)
 				char aChatmsg[512] = {0};
 				str_format(aChatmsg, sizeof(aChatmsg), "You must wait %d seconds before making another vote", (Timeleft/pData->m_pSqlData->Server()->TickSpeed())+1);
 				pData->m_pSqlData->GameServer()->SendChatTarget(pData->m_ClientID, aChatmsg);
-				return;
 			}
 			else if(time_get() < pData->m_pSqlData->GameServer()->m_LastMapVote + (time_freq() * g_Config.m_SvVoteMapTimeDelay))
 			{
@@ -461,10 +467,12 @@ void CSqlScore::MapVoteThread(void *pUser)
 				char aChatmsg[512];
 				str_format(aChatmsg, sizeof(aChatmsg), "'%s' called vote to change server option '%s' (%s)", pData->m_pSqlData->GameServer()->Server()->ClientName(pData->m_ClientID), aMap, "/map");
 
-				pData->m_pSqlData->GameServer()->CallVote(pData->m_ClientID, aMap, aCmd, "/map", aChatmsg);
+				pData->m_pSqlData->GameServer()->m_VoteKick = false;
 				pData->m_pSqlData->GameServer()->m_LastMapVote = time_get();
+				pData->m_pSqlData->GameServer()->CallVote(pData->m_ClientID, aMap, aCmd, "/map", aChatmsg);
 			}
 
+			end:
 			delete pData->m_pSqlData->m_pResults;
 		}
 		catch (sql::SQLException &e)

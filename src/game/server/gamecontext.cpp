@@ -166,7 +166,7 @@ void CGameContext::CreateExplosion(vec2 Pos, int Owner, int Weapon, bool NoDamag
 				ForceDir = normalize(Diff);
 			l = 1-clamp((l-InnerRadius)/(Radius-InnerRadius), 0.0f, 1.0f);
 			float Strength;
-			if (Owner == -1 || !m_apPlayers[Owner]->m_TuneZone)
+			if (Owner == -1 || !m_apPlayers[Owner] || !m_apPlayers[Owner]->m_TuneZone)
 				Strength = Tuning()->m_ExplosionStrength;
 			else
 				Strength = TuningList()[m_apPlayers[Owner]->m_TuneZone].m_ExplosionStrength;
@@ -260,6 +260,10 @@ void CGameContext::CallVote(int ClientID, const char *aDesc, const char *aCmd, c
 
 	int64 Now = Server()->Tick();
 	CPlayer *pPlayer = m_apPlayers[ClientID];
+
+	if(!pPlayer)
+		return;
+
 	SendChat(-1, CGameContext::CHAT_ALL, aChatmsg);
 	StartVote(aDesc, aCmd, pReason);
 	pPlayer->m_Vote = 1;
@@ -390,7 +394,7 @@ void CGameContext::StartVote(const char *pDesc, const char *pCommand, const char
 	}
 
 	// start vote
-	m_VoteCloseTime = time_get() + time_freq()*25;
+	m_VoteCloseTime = time_get() + time_freq() * g_Config.m_SvVoteTime;
 	str_copy(m_aVoteDescription, pDesc, sizeof(m_aVoteDescription));
 	str_copy(m_aVoteCommand, pCommand, sizeof(m_aVoteCommand));
 	str_copy(m_aVoteReason, pReason, sizeof(m_aVoteReason));
@@ -563,7 +567,7 @@ void CGameContext::OnTick()
 	CheckPureTuning();
 
 	// copy tuning
-	m_World.m_Core.m_Tuning = m_Tuning;
+	m_World.m_Core.m_Tuning[0] = m_Tuning;
 	m_World.Tick();
 
 	//if(world.paused) // make sure that the game object always updates
@@ -1022,7 +1026,7 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 				return;
 			}
 
-			int Timeleft = pPlayer->m_LastVoteCall + Server()->TickSpeed()*60 - Now;
+			int Timeleft = pPlayer->m_LastVoteCall + Server()->TickSpeed()*g_Config.m_SvVoteDelay - Now;
 			if(pPlayer->m_LastVoteCall && Timeleft > 0)
 			{
 				char aChatmsg[512] = {0};
@@ -1222,16 +1226,20 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 			if(!m_VoteCloseTime)
 				return;
 
-			if(pPlayer->m_Vote == 0)
-			{
-				CNetMsg_Cl_Vote *pMsg = (CNetMsg_Cl_Vote *)pRawMsg;
-				if(!pMsg->m_Vote)
-					return;
+			if(g_Config.m_SvSpamprotection && pPlayer->m_LastVoteTry && pPlayer->m_LastVoteTry+Server()->TickSpeed()*3 > Server()->Tick())
+				return;
 
-				pPlayer->m_Vote = pMsg->m_Vote;
-				pPlayer->m_VotePos = ++m_VotePos;
-				m_VoteUpdate = true;
-			}
+			int64 Now = Server()->Tick();
+
+			pPlayer->m_LastVoteTry = Now;
+
+			CNetMsg_Cl_Vote *pMsg = (CNetMsg_Cl_Vote *)pRawMsg;
+			if(!pMsg->m_Vote)
+				return;
+
+			pPlayer->m_Vote = pMsg->m_Vote;
+			pPlayer->m_VotePos = ++m_VotePos;
+			m_VoteUpdate = true;
 		}
 		else if (MsgID == NETMSGTYPE_CL_SETTEAM && !m_World.m_Paused)
 		{
@@ -1350,8 +1358,7 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 				if (!Server()->ReverseTranslate(pMsg->m_SpectatorID, ClientID))
 					return;
 
-			if((pPlayer->GetTeam() != TEAM_SPECTATORS && !pPlayer->m_Paused) || pPlayer->m_SpectatorID == pMsg->m_SpectatorID || ClientID == pMsg->m_SpectatorID ||
-				(g_Config.m_SvSpamprotection && pPlayer->m_LastSetSpectatorMode && pPlayer->m_LastSetSpectatorMode+Server()->TickSpeed() > Server()->Tick()))
+			if((g_Config.m_SvSpamprotection && pPlayer->m_LastSetSpectatorMode && pPlayer->m_LastSetSpectatorMode+Server()->TickSpeed() > Server()->Tick()))
 				return;
 
 			pPlayer->m_LastSetSpectatorMode = Server()->Tick();
@@ -2721,7 +2728,8 @@ void CGameContext::WhisperID(int ClientID, int VictimID, char *pMessage)
 	if (!CheckClientID2(VictimID))
 		return;
 
-	m_apPlayers[ClientID]->m_LastWhisperTo = VictimID;
+	if (m_apPlayers[ClientID])
+		m_apPlayers[ClientID]->m_LastWhisperTo = VictimID;
 
 	char aBuf[256];
 

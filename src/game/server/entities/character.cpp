@@ -1676,7 +1676,7 @@ void CCharacter::HandleTiles(int Index)
 		{
 			for (int i = 0; i < MAX_CLIENTS; i++)
 			{
-				if(Teams()->m_Core.Team(i) == Team && i != m_Core.m_Id)
+				if(Teams()->m_Core.Team(i) == Team && i != m_Core.m_Id && GameServer()->m_apPlayers[i])
 				{
 					CCharacter* pChar = GameServer()->m_apPlayers[i]->GetCharacter();
 
@@ -1812,9 +1812,9 @@ void CCharacter::HandleTuneLayer()
 	m_TuneZone = GameServer()->Collision()->IsTune(CurrentIndex);
 
 	if(m_TuneZone)
-		m_Core.m_pWorld->m_Tuning = GameServer()->TuningList()[m_TuneZone]; // throw tunings from specific zone into gamecore
+		m_Core.m_pWorld->m_Tuning[g_Config.m_ClDummy] = GameServer()->TuningList()[m_TuneZone]; // throw tunings from specific zone into gamecore
 	else
-		m_Core.m_pWorld->m_Tuning = *GameServer()->Tuning();
+		m_Core.m_pWorld->m_Tuning[g_Config.m_ClDummy] = *GameServer()->Tuning();
 
 	if (m_TuneZone != m_TuneZoneOld) // dont send tunigs all the time
 	{
@@ -2029,7 +2029,7 @@ void CCharacter::DDRaceInit()
 	{
 		for (int i = 0; i < MAX_CLIENTS; i++)
 		{
-			if(Teams()->m_Core.Team(i) == Team && i != m_Core.m_Id)
+			if(Teams()->m_Core.Team(i) == Team && i != m_Core.m_Id && GameServer()->m_apPlayers[i])
 			{
 				CCharacter* pChar = GameServer()->m_apPlayers[i]->GetCharacter();
 

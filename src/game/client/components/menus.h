@@ -94,24 +94,6 @@ class CMenus : public CComponent
 
 	enum
 	{
-		POPUP_NONE=0,
-		POPUP_FIRST_LAUNCH,
-		POPUP_CONNECTING,
-		POPUP_MESSAGE,
-		POPUP_DISCONNECTED,
-		POPUP_PURE,
-		POPUP_LANGUAGE,
-		POPUP_COUNTRY,
-		POPUP_DELETE_DEMO,
-		POPUP_RENAME_DEMO,
-		POPUP_REMOVE_FRIEND,
-		POPUP_SOUNDERROR,
-		POPUP_PASSWORD,
-		POPUP_QUIT,
-	};
-
-	enum
-	{
 		PAGE_NEWS=1,
 		PAGE_GAME,
 		PAGE_PLAYERS,
@@ -162,6 +144,7 @@ class CMenus : public CComponent
 	bool m_NeedRestartGraphics;
 	bool m_NeedRestartSound;
 	bool m_NeedSendinfo;
+	bool m_NeedSendDummyinfo;
 	int m_SettingPlayerPage;
 
 	//
@@ -324,6 +307,26 @@ public:
 	CGhostItem *m_OwnGhost;
 	int m_DDRacePage;
 	void GhostlistPopulate();
+	void setPopup(int Popup) { m_Popup = Popup; }
+
+	enum
+	{
+		POPUP_NONE=0,
+		POPUP_FIRST_LAUNCH,
+		POPUP_CONNECTING,
+		POPUP_MESSAGE,
+		POPUP_DISCONNECTED,
+		POPUP_PURE,
+		POPUP_LANGUAGE,
+		POPUP_COUNTRY,
+		POPUP_DELETE_DEMO,
+		POPUP_RENAME_DEMO,
+		POPUP_REMOVE_FRIEND,
+		POPUP_SOUNDERROR,
+		POPUP_PASSWORD,
+		POPUP_QUIT,
+		POPUP_AUTOUPDATE
+	};
 
 private:
 

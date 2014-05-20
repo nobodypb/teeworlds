@@ -458,8 +458,11 @@ void CServerBrowser::Set(const NETADDR &Addr, int Type, int Token, const CServer
 			SetInfo(pEntry, *pInfo);
 			if(m_ServerlistType == IServerBrowser::TYPE_LAN)
 				pEntry->m_Info.m_Latency = min(static_cast<int>((time_get()-m_BroadcastTime)*1000/time_freq()), 999);
-			else
+			else if (pEntry->m_RequestTime > 0)
+			{
 				pEntry->m_Info.m_Latency = min(static_cast<int>((time_get()-pEntry->m_RequestTime)*1000/time_freq()), 999);
+				pEntry->m_RequestTime = -1; // Request has been answered
+			}
 			RemoveRequest(pEntry);
 		}
 	}
@@ -642,11 +645,11 @@ void CServerBrowser::Update(bool ForceResort)
 					*/
 				}
 				else
-					m_MasterServerCount += Count;		
+					m_MasterServerCount += Count;
 			}
 		//request Server-List
 		NETADDR Addr;
-		CNetChunk Packet;		
+		CNetChunk Packet;
 		mem_zero(&Packet, sizeof(Packet));
 		Packet.m_ClientID = -1;
 		Packet.m_Flags = NETSENDFLAG_CONNLESS;

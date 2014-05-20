@@ -209,10 +209,15 @@ void CMenus::RenderSettingsPlayer(CUIRect MainView)
 	str_format(aBuf, sizeof(aBuf), "%s:", Localize("Name"));
 	UI()->DoLabelScaled(&Label, aBuf, 14.0, -1);
 	static float s_OffsetName = 0.0f;
-	if(DoEditBox(Name, &Button, Name, sizeof(Name), 14.0f, &s_OffsetName))
-		m_NeedSendinfo = true;
+	if(DoEditBox(Name, &Button, Name, sizeof(g_Config.m_PlayerName), 14.0f, &s_OffsetName))
+	{
+		if(s_Dummy)
+			m_NeedSendDummyinfo = true;
+		else
+			m_NeedSendinfo = true;
+	}
 
-	if(DoButton_CheckBox(&g_Config.m_ClShowKillMessages, Localize("Dummy Settings"), s_Dummy, &Dummy))
+	if(DoButton_CheckBox(&g_Config.m_ClShowKillMessages, Localize("Dummy settings"), s_Dummy, &Dummy))
 	{
 		s_Dummy ^= 1;
 	}
@@ -225,8 +230,13 @@ void CMenus::RenderSettingsPlayer(CUIRect MainView)
 	str_format(aBuf, sizeof(aBuf), "%s:", Localize("Clan"));
 	UI()->DoLabelScaled(&Label, aBuf, 14.0, -1);
 	static float s_OffsetClan = 0.0f;
-	if(DoEditBox(Clan, &Button, Clan, sizeof(Clan), 14.0f, &s_OffsetClan))
-		m_NeedSendinfo = true;
+	if(DoEditBox(Clan, &Button, Clan, sizeof(g_Config.m_PlayerClan), 14.0f, &s_OffsetClan))
+	{
+		if(s_Dummy)
+			m_NeedSendDummyinfo = true;
+		else
+			m_NeedSendinfo = true;
+	}
 
 	// country flag selector
 	MainView.HSplitTop(20.0f, 0, &MainView);
@@ -260,7 +270,10 @@ void CMenus::RenderSettingsPlayer(CUIRect MainView)
 	if(OldSelected != NewSelected)
 	{
 		*Country = m_pClient->m_pCountryFlags->GetByIndex(NewSelected)->m_CountryCode;
-		m_NeedSendinfo = true;
+		if(s_Dummy)
+			m_NeedSendDummyinfo = true;
+		else
+			m_NeedSendinfo = true;
 	}
 }
 
@@ -308,7 +321,7 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 	str_format(aBuf, sizeof(aBuf), "%s:", Localize("Your skin"));
 	UI()->DoLabelScaled(&Label, aBuf, 14.0f, -1);
 
-	if(DoButton_CheckBox(&g_Config.m_ClShowKillMessages, Localize("Dummy Settings"), s_Dummy, &Dummy))
+	if(DoButton_CheckBox(&g_Config.m_ClShowKillMessages, Localize("Dummy settings"), s_Dummy, &Dummy))
 	{
 		s_Dummy ^= 1;
 	}
@@ -328,7 +341,10 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 	if(DoButton_CheckBox(&ColorBody, Localize("Custom colors"), *UseCustomColor, &Button))
 	{
 		*UseCustomColor = *UseCustomColor?0:1;
-		m_NeedSendinfo = true;
+		if(s_Dummy)
+			m_NeedSendDummyinfo = true;
+		else
+			m_NeedSendinfo = true;
 	}
 	if(DoButton_CheckBox(&g_Config.m_ClShowSpecialSkins, Localize("Show Bandana Brothers skins"), g_Config.m_ClShowSpecialSkins, &Button2))
 	{
@@ -381,7 +397,12 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 			}
 
 			if(PrevColor != Color)
-				m_NeedSendinfo = true;
+			{
+				if(s_Dummy)
+					m_NeedSendDummyinfo = true;
+				else
+					m_NeedSendinfo = true;
+			}
 
 			*paColors[i] = Color;
 		}
@@ -454,8 +475,11 @@ void CMenus::RenderSettingsTee(CUIRect MainView)
 	const int NewSelected = UiDoListboxEnd(&s_ScrollValue, 0);
 	if(OldSelected != NewSelected)
 	{
-		mem_copy(Skin, s_paSkinList[NewSelected]->m_aName, sizeof(Skin));
-		m_NeedSendinfo = true;
+		mem_copy(Skin, s_paSkinList[NewSelected]->m_aName, sizeof(g_Config.m_PlayerSkin));
+		if(s_Dummy)
+			m_NeedSendDummyinfo = true;
+		else
+			m_NeedSendinfo = true;
 	}
 }
 
@@ -500,6 +524,7 @@ static CKeyInfo gs_aKeys[] =
 	{ "Scoreboard", "+scoreboard", 0 },
 	{ "Respawn", "kill", 0 },
 	{ "Toggle Dummy", "toggle cl_dummy 0 1", 0 },
+	{ "Hammerfly Dummy", "toggle cl_dummy_hammer 0 1", 0 },
 };
 
 /*	This is for scripts/update_localization.py to work, don't remove!
@@ -614,9 +639,9 @@ void CMenus::RenderSettingsControls(CUIRect MainView)
 	// voting settings
 	{
 		VotingSettings.VMargin(5.0f, &VotingSettings);
-		VotingSettings.HSplitTop(MainView.h/3-75.0f, &VotingSettings, &ChatSettings);
+		VotingSettings.HSplitTop(MainView.h/3-95.0f, &VotingSettings, &ChatSettings);
 		RenderTools()->DrawUIRect(&VotingSettings, vec4(1,1,1,0.25f), CUI::CORNER_ALL, 10.0f);
-		VotingSettings.Margin(10.0f, &VotingSettings);
+		VotingSettings.VMargin(10.0f, &VotingSettings);
 
 		TextRender()->Text(0, VotingSettings.x, VotingSettings.y, 14.0f*UI()->Scale(), Localize("Voting"), -1);
 
@@ -646,7 +671,7 @@ void CMenus::RenderSettingsControls(CUIRect MainView)
 		TextRender()->Text(0, MiscSettings.x, MiscSettings.y, 14.0f*UI()->Scale(), Localize("Miscellaneous"), -1);
 
 		MiscSettings.HSplitTop(14.0f+5.0f+10.0f, 0, &MiscSettings);
-		UiDoGetButtons(19, 29, MiscSettings);
+		UiDoGetButtons(19, 30, MiscSettings);
 	}
 
 }
@@ -867,6 +892,10 @@ void CMenus::RenderSettingsSound(CUIRect MainView)
 	MainView.HSplitTop(20.0f, &Button, &MainView);
 	if(DoButton_CheckBox(&g_Config.m_SndChat, Localize("Enable regular chat sound"), g_Config.m_SndChat, &Button))
 		g_Config.m_SndChat ^= 1;
+
+	MainView.HSplitTop(20.0f, &Button, &MainView);
+	if(DoButton_CheckBox(&g_Config.m_SndTeamChat, Localize("Enable team chat sound"), g_Config.m_SndTeamChat, &Button))
+		g_Config.m_SndTeamChat ^= 1;
 
 	MainView.HSplitTop(20.0f, &Button, &MainView);
 	if(DoButton_CheckBox(&g_Config.m_SndHighlight, Localize("Enable highlighted chat sound"), g_Config.m_SndHighlight, &Button))
@@ -1194,16 +1223,22 @@ void CMenus::RenderSettingsDDRace(CUIRect MainView)
 	Left.VSplitRight(5.0f, &Left, 0);
 	Right.VMargin(5.0f, &Right);
 
-	Left.HSplitTop(20.0f, &Button, &Left);
-	if(DoButton_CheckBox(&g_Config.m_ClShowEntities, Localize("Show entities"), g_Config.m_ClShowEntities, &Button))
 	{
-		g_Config.m_ClShowEntities ^= 1;
+		CUIRect Button, Label;
+		Left.HSplitTop(20.0f, &Button, &Left);
+		Button.VSplitLeft(120.0f, &Label, &Button);
+		Button.HMargin(2.0f, &Button);
+		UI()->DoLabelScaled(&Label, Localize("Overlay entities"), 14.0f, -1);
+		g_Config.m_ClOverlayEntities = (int)(DoScrollbarH(&g_Config.m_ClOverlayEntities, &Button, g_Config.m_ClOverlayEntities/100.0f)*100.0f);
 	}
 
-	Left.HSplitTop(20.0f, &Button, &Left);
-	if(DoButton_CheckBox(&g_Config.m_ClShowOthers, Localize("Show players in other teams"), g_Config.m_ClShowOthers, &Button))
 	{
-		g_Config.m_ClShowOthers ^= 1;
+		CUIRect Button, Label;
+		Left.HSplitTop(20.0f, &Button, &Left);
+		Button.VSplitLeft(120.0f, &Label, &Button);
+		Button.HMargin(2.0f, &Button);
+		UI()->DoLabelScaled(&Label, Localize("Show others"), 14.0f, -1);
+		g_Config.m_ClShowOthersAlpha = (int)(DoScrollbarH(&g_Config.m_ClShowOthersAlpha, &Button, g_Config.m_ClShowOthersAlpha /100.0f)*100.0f);
 	}
 
 	Left.HSplitTop(20.0f, &Button, &Left);
@@ -1236,6 +1271,12 @@ void CMenus::RenderSettingsDDRace(CUIRect MainView)
 		g_Config.m_ClShowNinja ^= 1;
 	}
 
+	Right.HSplitTop(20.0f, &Button, &Right);
+	if(DoButton_CheckBox(&g_Config.m_ClOldGunPosition, Localize("Old gun position"), g_Config.m_ClOldGunPosition, &Button))
+	{
+		g_Config.m_ClOldGunPosition ^= 1;
+	}
+
 	Left.HSplitTop(20.0f, &Button, &Left);
 	if(DoButton_CheckBox(&g_Config.m_ClShowOtherHookColl, Localize("Show other players' hook collision lines"), g_Config.m_ClShowOtherHookColl, &Button))
 	{
@@ -1247,8 +1288,6 @@ void CMenus::RenderSettingsDDRace(CUIRect MainView)
 	{
 		g_Config.m_ClShowDirection ^= 1;
 	}
-
-	Right.HSplitTop(20.0f, &Button, &Right);
 
 	CUIRect aRects[2];
 	Left.HSplitTop(5.0f, &Button, &Left);
@@ -1290,7 +1329,7 @@ void CMenus::RenderSettingsDDRace(CUIRect MainView)
 
 	MainView.HSplitTop(30.0f, &Label, &Miscellaneous);
 	UI()->DoLabelScaled(&Label, Localize("Miscellaneous"), 20.0f, -1);
-	Miscellaneous.Margin(5.0f, &Miscellaneous);
+	Miscellaneous.VMargin(5.0f, &Miscellaneous);
 	Miscellaneous.VSplitMid(&Left, &Right);
 	Left.VSplitRight(5.0f, &Left, 0);
 	Right.VMargin(5.0f, &Right);
@@ -1308,11 +1347,12 @@ void CMenus::RenderSettingsDDRace(CUIRect MainView)
 	}
 
 	// Auto Update
+#if !defined(CONF_PLATFORM_MACOSX)
 	CUIRect HUDItem;
 	Left.HSplitTop(20.0f, &HUDItem, &Left);
 	HUDItem.VSplitMid(&HUDItem, &Button);
-	if(DoButton_CheckBox(&g_Config.m_hcAutoUpdate, Localize("Auto-Update"), g_Config.m_hcAutoUpdate, &HUDItem))
-		g_Config.m_hcAutoUpdate ^= 1;
+	if(DoButton_CheckBox(&g_Config.m_ClAutoUpdate, Localize("Auto-Update"), g_Config.m_ClAutoUpdate, &HUDItem))
+		g_Config.m_ClAutoUpdate ^= 1;
 	Button.Margin(2.0f, &Button);
 	static int s_ButtonAutoUpdate = 0;
 	if (DoButton_Menu((void*)&s_ButtonAutoUpdate, Localize("Check now"), 0, &Button))
@@ -1321,22 +1361,6 @@ void CMenus::RenderSettingsDDRace(CUIRect MainView)
 		str_format(aBuf, sizeof(aBuf), "Checking for an update");
 		RenderUpdating(aBuf);
 		AutoUpdate()->CheckUpdates(this);
-		if (AutoUpdate()->Updated())
-		{
-			if (AutoUpdate()->NeedResetClient())
-			{
-				Client()->Quit();
-				return;
-			}
-			else
-				str_format(aBuf, sizeof(aBuf), "DDNet Client updated");
-
-			RenderUpdating(aBuf);
-		}
-		else
-		{
-			str_format(aBuf, sizeof(aBuf), "No update available");
-			RenderUpdating(aBuf);
-		}
 	}
+#endif
 }

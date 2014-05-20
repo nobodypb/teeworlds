@@ -923,7 +923,10 @@ void CEditor::PopupSelectImageInvoke(int Current, float x, float y)
 	static int s_SelectImagePopupId = 0;
 	g_SelectImageSelected = -100;
 	g_SelectImageCurrent = Current;
-	UiInvokePopupMenu(&s_SelectImagePopupId, 0, x, y, 400, 300, PopupSelectImage);
+	if (m_Map.m_lImages.size() > 20)
+		UiInvokePopupMenu(&s_SelectImagePopupId, 0, x, 50, 400, m_Map.m_lImages.size() * 15, PopupSelectImage);
+	else
+		UiInvokePopupMenu(&s_SelectImagePopupId, 0, x, y, 400, 300, PopupSelectImage);
 }
 
 int CEditor::PopupSelectImageResult()
@@ -1032,10 +1035,32 @@ int CEditor::PopupTele(CEditor *pEditor, CUIRect View)
 
 	static int s_aIds[NUM_PROPS] = {0};
 	int NewVal = 0;
-	int Prop = pEditor->DoProperties(&View, aProps, s_aIds, &NewVal);
+	static vec4 s_color = vec4(1,1,1,0.5f);
+
+	int Prop = pEditor->DoProperties(&View, aProps, s_aIds, &NewVal, s_color);
 
 	if(Prop == PROP_TELE)
-		 pEditor->m_TeleNumber = clamp(NewVal, 0, 255);
+	{
+		NewVal = clamp(NewVal, 0, 255);
+
+		CLayerTele *gl = pEditor->m_Map.m_pTeleLayer;
+		for(int y = 0; y < gl->m_Height; ++y)
+		{
+			for(int x = 0; x < gl->m_Width; ++x)
+			{
+				if(gl->m_pTeleTile[y*gl->m_Width+x].m_Number == NewVal)
+				{
+					s_color = vec4(1,0.5f,0.5f,0.5f);
+					goto done;
+				}
+			}
+		}
+
+		s_color = vec4(0.5f,1,0.5f,0.5f);
+
+		done:
+		pEditor->m_TeleNumber = NewVal;
+	}
 
 	return 0;
 }
@@ -1094,12 +1119,33 @@ int CEditor::PopupSwitch(CEditor *pEditor, CUIRect View)
 
 	static int s_aIds[NUM_PROPS] = {0};
 	int NewVal = 0;
-	int Prop = pEditor->DoProperties(&View, aProps, s_aIds, &NewVal);
+	static vec4 s_color = vec4(1,1,1,0.5f);
+	int Prop = pEditor->DoProperties(&View, aProps, s_aIds, &NewVal, s_color);
 
 	if(Prop == PROP_SwitchNumber)
-		 pEditor->m_SwitchNum = clamp(NewVal, 0, 255);
+	{
+		NewVal = clamp(NewVal, 0, 255);
+
+		CLayerSwitch *gl = pEditor->m_Map.m_pSwitchLayer;
+		for(int y = 0; y < gl->m_Height; ++y)
+		{
+			for(int x = 0; x < gl->m_Width; ++x)
+			{
+				if(gl->m_pSwitchTile[y*gl->m_Width+x].m_Number == NewVal)
+				{
+					s_color = vec4(1,0.5f,0.5f,0.5f);
+					goto done;
+				}
+			}
+		}
+
+		s_color = vec4(0.5f,1,0.5f,0.5f);
+
+		done:
+		pEditor->m_SwitchNum = NewVal;
+	}
 	if(Prop == PROP_SwitchDelay)
-		 pEditor->m_SwitchDelay = clamp(NewVal, 0, 255);
+		pEditor->m_SwitchDelay = clamp(NewVal, 0, 255);
 
 	return 0;
 }

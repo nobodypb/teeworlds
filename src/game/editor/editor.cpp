@@ -1665,8 +1665,8 @@ void CEditor::DoQuadEnvPoint(const CQuad *pQuad, int QIndex, int PIndex)
 				else
 					y = (int)((wy-(LineDistance/2)*m_GridFactor)/(LineDistance*m_GridFactor)) * (LineDistance*m_GridFactor);
 
-				pEnvelope->m_lPoints[PIndex].m_aValues[0] = f2fx(x);
-				pEnvelope->m_lPoints[PIndex].m_aValues[1] = f2fx(y);
+				pEnvelope->m_lPoints[PIndex].m_aValues[0] = f2fx(x)-pQuad->m_aPoints[4].x;
+				pEnvelope->m_lPoints[PIndex].m_aValues[1] = f2fx(y)-pQuad->m_aPoints[4].y;
 			}
 			else
 			{
@@ -2237,7 +2237,7 @@ void CEditor::DoMapEditor(CUIRect View, CUIRect ToolBar)
 }
 
 
-int CEditor::DoProperties(CUIRect *pToolBox, CProperty *pProps, int *pIDs, int *pNewVal)
+int CEditor::DoProperties(CUIRect *pToolBox, CProperty *pProps, int *pIDs, int *pNewVal, vec4 color)
 {
 	int Change = -1;
 
@@ -2258,7 +2258,7 @@ int CEditor::DoProperties(CUIRect *pToolBox, CProperty *pProps, int *pIDs, int *
 			Shifter.VSplitRight(10.0f, &Shifter, &Inc);
 			Shifter.VSplitLeft(10.0f, &Dec, &Shifter);
 			str_format(aBuf, sizeof(aBuf),"%d", pProps[i].m_Value);
-			RenderTools()->DrawUIRect(&Shifter, vec4(1,1,1,0.5f), 0, 0.0f);
+			RenderTools()->DrawUIRect(&Shifter, color, 0, 0.0f);
 			UI()->DoLabel(&Shifter, aBuf, 10.0f, 0, -1);
 
 			if(DoButton_ButtonDec(&pIDs[i], 0, 0, &Dec, 0, "Decrease"))

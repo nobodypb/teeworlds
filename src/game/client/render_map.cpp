@@ -85,13 +85,13 @@ static void Rotate(CPoint *pCenter, CPoint *pPoint, float Rotation)
 
 void CRenderTools::RenderQuads(CQuad *pQuads, int NumQuads, int RenderFlags, ENVELOPE_EVAL pfnEval, void *pUser)
 {
-	if(!g_Config.m_ClShowQuads || g_Config.m_ClShowEntities)
+	if(!g_Config.m_ClShowQuads || g_Config.m_ClOverlayEntities == 100)
 		return;
 
-	ForceRenderQuads(pQuads, NumQuads, RenderFlags, pfnEval, pUser);
+	ForceRenderQuads(pQuads, NumQuads, RenderFlags, pfnEval, pUser, (100-g_Config.m_ClOverlayEntities)/100.0f);
 }
 
-void CRenderTools::ForceRenderQuads(CQuad *pQuads, int NumQuads, int RenderFlags, ENVELOPE_EVAL pfnEval, void *pUser)
+void CRenderTools::ForceRenderQuads(CQuad *pQuads, int NumQuads, int RenderFlags, ENVELOPE_EVAL pfnEval, void *pUser, float Alpha)
 {
 	Graphics()->QuadsBegin();
 	float Conv = 1/255.0f;
@@ -143,10 +143,10 @@ void CRenderTools::ForceRenderQuads(CQuad *pQuads, int NumQuads, int RenderFlags
 		}
 
 		IGraphics::CColorVertex Array[4] = {
-			IGraphics::CColorVertex(0, q->m_aColors[0].r*Conv*r, q->m_aColors[0].g*Conv*g, q->m_aColors[0].b*Conv*b, q->m_aColors[0].a*Conv*a),
-			IGraphics::CColorVertex(1, q->m_aColors[1].r*Conv*r, q->m_aColors[1].g*Conv*g, q->m_aColors[1].b*Conv*b, q->m_aColors[1].a*Conv*a),
-			IGraphics::CColorVertex(2, q->m_aColors[2].r*Conv*r, q->m_aColors[2].g*Conv*g, q->m_aColors[2].b*Conv*b, q->m_aColors[2].a*Conv*a),
-			IGraphics::CColorVertex(3, q->m_aColors[3].r*Conv*r, q->m_aColors[3].g*Conv*g, q->m_aColors[3].b*Conv*b, q->m_aColors[3].a*Conv*a)};
+			IGraphics::CColorVertex(0, q->m_aColors[0].r*Conv*r, q->m_aColors[0].g*Conv*g, q->m_aColors[0].b*Conv*b, q->m_aColors[0].a*Conv*a*Alpha),
+			IGraphics::CColorVertex(1, q->m_aColors[1].r*Conv*r, q->m_aColors[1].g*Conv*g, q->m_aColors[1].b*Conv*b, q->m_aColors[1].a*Conv*a*Alpha),
+			IGraphics::CColorVertex(2, q->m_aColors[2].r*Conv*r, q->m_aColors[2].g*Conv*g, q->m_aColors[2].b*Conv*b, q->m_aColors[2].a*Conv*a*Alpha),
+			IGraphics::CColorVertex(3, q->m_aColors[3].r*Conv*r, q->m_aColors[3].g*Conv*g, q->m_aColors[3].b*Conv*b, q->m_aColors[3].a*Conv*a*Alpha)};
 		Graphics()->SetColorVertex(Array, 4);
 
 		CPoint *pPoints = q->m_aPoints;
@@ -322,7 +322,7 @@ void CRenderTools::RenderTilemap(CTile *pTiles, int w, int h, float Scale, vec4 
 	Graphics()->MapScreen(ScreenX0, ScreenY0, ScreenX1, ScreenY1);
 }
 
-void CRenderTools::RenderTeleOverlay(CTeleTile *pTele, int w, int h, float Scale)
+void CRenderTools::RenderTeleOverlay(CTeleTile *pTele, int w, int h, float Scale, float Alpha)
 {
 	float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
 	Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
@@ -355,14 +355,16 @@ void CRenderTools::RenderTeleOverlay(CTeleTile *pTele, int w, int h, float Scale
 			{
 				char aBuf[16];
 				str_format(aBuf, sizeof(aBuf), "%d", Index);
+				UI()->TextRender()->TextColor(1.0f, 1.0f, 1.0f, Alpha);
 				UI()->TextRender()->Text(0, mx*Scale-2, my*Scale-4, Scale-5, aBuf, -1);
+				UI()->TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 			}
 		}
 
 	Graphics()->MapScreen(ScreenX0, ScreenY0, ScreenX1, ScreenY1);
 }
 
-void CRenderTools::RenderSpeedupOverlay(CSpeedupTile *pSpeedup, int w, int h, float Scale)
+void CRenderTools::RenderSpeedupOverlay(CSpeedupTile *pSpeedup, int w, int h, float Scale, float Alpha)
 {
 	float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
 	Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
@@ -396,6 +398,7 @@ void CRenderTools::RenderSpeedupOverlay(CSpeedupTile *pSpeedup, int w, int h, fl
 				// draw arrow
 				Graphics()->TextureSet(g_pData->m_aImages[IMAGE_SPEEDUP_ARROW].m_Id);
 				Graphics()->QuadsBegin();
+				Graphics()->SetColor(255.0f, 255.0f, 255.0f, Alpha);
 
 				SelectSprite(SPRITE_SPEEDUP_ARROW);
 				Graphics()->QuadsSetRotation(pSpeedup[c].m_Angle*(3.14159265f/180.0f));
@@ -406,11 +409,15 @@ void CRenderTools::RenderSpeedupOverlay(CSpeedupTile *pSpeedup, int w, int h, fl
 				// draw force
 				char aBuf[16];
 				str_format(aBuf, sizeof(aBuf), "%d", Force);
+				UI()->TextRender()->TextColor(1.0f, 1.0f, 1.0f, Alpha);
 				UI()->TextRender()->Text(0, mx*Scale, my*Scale+16, Scale-20, aBuf, -1);
+				UI()->TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 				if(MaxSpeed)
 				{
 					str_format(aBuf, sizeof(aBuf), "%d", MaxSpeed);
+					UI()->TextRender()->TextColor(1.0f, 1.0f, 1.0f, Alpha);
 					UI()->TextRender()->Text(0, mx*Scale, my*Scale-2, Scale-20, aBuf, -1);
+					UI()->TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 				}
 			}
 		}
@@ -418,7 +425,7 @@ void CRenderTools::RenderSpeedupOverlay(CSpeedupTile *pSpeedup, int w, int h, fl
 	Graphics()->MapScreen(ScreenX0, ScreenY0, ScreenX1, ScreenY1);
 }
 
-void CRenderTools::RenderSwitchOverlay(CSwitchTile *pSwitch, int w, int h, float Scale)
+void CRenderTools::RenderSwitchOverlay(CSwitchTile *pSwitch, int w, int h, float Scale, float Alpha)
 {
 	float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
 	Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
@@ -451,7 +458,9 @@ void CRenderTools::RenderSwitchOverlay(CSwitchTile *pSwitch, int w, int h, float
 			{
 				char aBuf[16];
 				str_format(aBuf, sizeof(aBuf), "%d", Index);
+				UI()->TextRender()->TextColor(1.0f, 1.0f, 1.0f, Alpha);
 				UI()->TextRender()->Text(0, mx*Scale, my*Scale+16, Scale-20, aBuf, -1);
+				UI()->TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 			}
 
 			unsigned char Delay = pSwitch[c].m_Delay;
@@ -459,14 +468,16 @@ void CRenderTools::RenderSwitchOverlay(CSwitchTile *pSwitch, int w, int h, float
 			{
 				char aBuf[16];
 				str_format(aBuf, sizeof(aBuf), "%d", Delay);
+				UI()->TextRender()->TextColor(1.0f, 1.0f, 1.0f, Alpha);
 				UI()->TextRender()->Text(0, mx*Scale, my*Scale-2, Scale-20, aBuf, -1);
+				UI()->TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 			}
 		}
 
 	Graphics()->MapScreen(ScreenX0, ScreenY0, ScreenX1, ScreenY1);
 }
 
-void CRenderTools::RenderTuneOverlay(CTuneTile *pTune, int w, int h, float Scale)
+void CRenderTools::RenderTuneOverlay(CTuneTile *pTune, int w, int h, float Scale, float Alpha)
 {
 	float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
 	Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
@@ -502,7 +513,9 @@ void CRenderTools::RenderTuneOverlay(CTuneTile *pTune, int w, int h, float Scale
 			{
 				char aBuf[16];
 				str_format(aBuf, sizeof(aBuf), "%d", Index);
+				UI()->TextRender()->TextColor(1.0f, 1.0f, 1.0f, Alpha);
 				UI()->TextRender()->Text(0, mx*Scale+11.f, my*Scale+6.f, Scale/1.5f-5.f, aBuf, -1); // numbers shouldnt be too big and in the center of the tile
+				UI()->TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 			}
 		}
 

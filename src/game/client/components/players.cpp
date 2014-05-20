@@ -247,8 +247,8 @@ void CPlayers::RenderHook(
 
 	if (OtherTeam)
 	{
-		RenderInfo.m_ColorBody.a = 0.4f;
-		RenderInfo.m_ColorFeet.a = 0.4f;
+		RenderInfo.m_ColorBody.a = g_Config.m_ClShowOthersAlpha / 100.0f;
+		RenderInfo.m_ColorFeet.a = g_Config.m_ClShowOthersAlpha / 100.0f;
 	}
 
 	// set size
@@ -345,7 +345,7 @@ void CPlayers::RenderHook(
 		RenderTools()->SelectSprite(SPRITE_HOOK_HEAD);
 		IGraphics::CQuadItem QuadItem(HookPos.x, HookPos.y, 24,16);
 		if (OtherTeam)
-			Graphics()->SetColor(1.0f, 1.0f, 1.0f, 0.4f);
+			Graphics()->SetColor(1.0f, 1.0f, 1.0f, g_Config.m_ClShowOthersAlpha / 100.0f);
 		Graphics()->QuadsDraw(&QuadItem, 1);
 
 		// render chain
@@ -359,7 +359,7 @@ void CPlayers::RenderHook(
 		}
 
 		if (OtherTeam)
-			Graphics()->SetColor(1.0f, 1.0f, 1.0f, 0.4f);
+			Graphics()->SetColor(1.0f, 1.0f, 1.0f, g_Config.m_ClShowOthersAlpha / 100.0f);
 		Graphics()->QuadsDraw(Array, i);
 		Graphics()->QuadsSetRotation(0);
 		Graphics()->QuadsEnd();
@@ -410,7 +410,7 @@ void CPlayers::RenderPlayer(
 	if(pInfo.m_Local && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 	{
 		// just use the direct input if it's local player we are rendering
-		Angle = GetAngle(m_pClient->m_pControls->m_MousePos);
+		Angle = GetAngle(m_pClient->m_pControls->m_MousePos[g_Config.m_ClDummy]);
 	}
 	else
 	{
@@ -544,11 +544,11 @@ void CPlayers::RenderPlayer(
 			vec2 ExDirection = Direction;
 
 			if (pPlayerInfo->m_Local && Client()->State() != IClient::STATE_DEMOPLAYBACK)
-				ExDirection = normalize(vec2(m_pClient->m_pControls->m_InputData.m_TargetX, m_pClient->m_pControls->m_InputData.m_TargetY));
+				ExDirection = normalize(vec2(m_pClient->m_pControls->m_InputData[g_Config.m_ClDummy].m_TargetX, m_pClient->m_pControls->m_InputData[g_Config.m_ClDummy].m_TargetY));
 
 			Graphics()->TextureSet(-1);
 			vec2 initPos = Position;
-			vec2 finishPos = initPos + ExDirection * (m_pClient->m_Tuning.m_HookLength-42.0f);
+			vec2 finishPos = initPos + ExDirection * (m_pClient->m_Tuning[g_Config.m_ClDummy].m_HookLength-42.0f);
 
 			Graphics()->LinesBegin();
 			Graphics()->SetColor(1.00f, 0.0f, 0.0f, 1.00f);
@@ -561,29 +561,31 @@ void CPlayers::RenderPlayer(
 			bool doBreak = false;
 			int Hit = 0;
 
+			float Alpha = 1.0f;
+			if (OtherTeam)
+				Alpha = g_Config.m_ClShowOthersAlpha / 100.0f;
+
 			do {
 				OldPos = NewPos;
-				NewPos = OldPos + ExDirection * m_pClient->m_Tuning.m_HookFireSpeed;
+				NewPos = OldPos + ExDirection * m_pClient->m_Tuning[g_Config.m_ClDummy].m_HookFireSpeed;
 
-				if (distance(Position, NewPos) > m_pClient->m_Tuning.m_HookLength)
+				if (distance(initPos, NewPos) > m_pClient->m_Tuning[g_Config.m_ClDummy].m_HookLength)
 				{
-					NewPos = initPos + normalize(NewPos-initPos) * m_pClient->m_Tuning.m_HookLength;
+					NewPos = initPos + normalize(NewPos-initPos) * m_pClient->m_Tuning[g_Config.m_ClDummy].m_HookLength;
 					doBreak = true;
 				}
 
 				int teleNr = 0;
 				Hit = Collision()->IntersectLineTeleHook(OldPos, NewPos, &finishPos, 0x0, &teleNr, true);
 
-				if(!doBreak && Hit)
-				{
-					vec2 finishPosPost = finishPos;
-					if (!(Collision()->GetCollisionAt(finishPosPost.x, finishPosPost.y)&CCollision::COLFLAG_NOHOOK))
-						Graphics()->SetColor(130.0f/255.0f, 232.0f/255.0f, 160.0f/255.0f, 1.0f);
+				if(!doBreak && Hit) {
+					if (!(Hit&CCollision::COLFLAG_NOHOOK))
+						Graphics()->SetColor(130.0f/255.0f, 232.0f/255.0f, 160.0f/255.0f, Alpha);
 				}
 
-				if(m_pClient->m_Tuning.m_PlayerHooking && m_pClient->IntersectCharacter(OldPos, finishPos, finishPos, pPlayerInfo->m_ClientID) != -1)
+				if(m_pClient->m_Tuning[g_Config.m_ClDummy].m_PlayerHooking && m_pClient->IntersectCharacter(OldPos, finishPos, finishPos, pPlayerInfo->m_ClientID) != -1)
 				{
-					Graphics()->SetColor(1.0f, 1.0f, 0.0f, 1.0f);
+					Graphics()->SetColor(1.0f, 1.0f, 0.0f, Alpha);
 					break;
 				}
 
@@ -600,7 +602,7 @@ void CPlayers::RenderPlayer(
 				ExDirection.y = round_to_int(ExDirection.y*256.0f) / 256.0f;
 			} while (!doBreak);
 
-			IGraphics::CLineItem LineItem(Position.x, Position.y, finishPos.x, finishPos.y);
+			IGraphics::CLineItem LineItem(initPos.x, initPos.y, finishPos.x, finishPos.y);
 			Graphics()->LinesDraw(&LineItem, 1);
 			Graphics()->LinesEnd();
 		}
@@ -614,7 +616,7 @@ void CPlayers::RenderPlayer(
 		RenderTools()->SelectSprite(g_pData->m_Weapons.m_aId[iw].m_pSpriteBody, Direction.x < 0 ? SPRITE_FLAG_FLIP_Y : 0);
 
 		if (OtherTeam)
-			Graphics()->SetColor(1.0f, 1.0f, 1.0f, 0.4f);
+			Graphics()->SetColor(1.0f, 1.0f, 1.0f, g_Config.m_ClShowOthersAlpha / 100.0f);
 
 		vec2 Dir = Direction;
 		float Recoil = 0.0f;
@@ -703,6 +705,8 @@ void CPlayers::RenderPlayer(
 				Recoil = sinf(a*pi);
 			p = Position + Dir * g_pData->m_Weapons.m_aId[iw].m_Offsetx - Dir*Recoil*10.0f;
 			p.y += g_pData->m_Weapons.m_aId[iw].m_Offsety;
+			if (Player.m_Weapon == WEAPON_GUN && g_Config.m_ClOldGunPosition)
+				p.y -= 8;
 			RenderTools()->DrawSprite(p.x, p.y, g_pData->m_Weapons.m_aId[iw].m_VisualSize);
 		}
 
@@ -754,8 +758,8 @@ void CPlayers::RenderPlayer(
 
 		if (OtherTeam)
 		{
-			RenderInfo.m_ColorBody.a = 0.4f;
-			RenderInfo.m_ColorFeet.a = 0.4f;
+			RenderInfo.m_ColorBody.a = g_Config.m_ClShowOthersAlpha / 100.0f;
+			RenderInfo.m_ColorFeet.a = g_Config.m_ClShowOthersAlpha / 100.0f;
 		}
 
 		switch (Player.m_Weapon)
@@ -781,19 +785,30 @@ void CPlayers::RenderPlayer(
 
 	if (OtherTeam)
 	{
-		RenderInfo.m_ColorBody.a = 0.4f;
-		RenderInfo.m_ColorFeet.a = 0.4f;
+		RenderInfo.m_ColorBody.a = g_Config.m_ClShowOthersAlpha / 100.0f;
+		RenderInfo.m_ColorFeet.a = g_Config.m_ClShowOthersAlpha / 100.0f;
 	}
 
 	if (g_Config.m_ClShowDirection && (!pInfo.m_Local || DemoPlayer()->IsPlaying()))
 	{
-		if (Player.m_Direction != 0)
+		if (Player.m_Direction == -1)
 		{
 			Graphics()->TextureSet(g_pData->m_aImages[IMAGE_ARROW].m_Id);
 			Graphics()->QuadsBegin();
-			IGraphics::CQuadItem QuadItem(Position.x-15, Position.y - 70, 22, 22);
-			if (Player.m_Direction == -1)
-				Graphics()->QuadsSetRotation(GetAngle(vec2(1,0))+pi);
+			if (OtherTeam)
+				Graphics()->SetColor(1.0f, 1.0f, 1.0f, g_Config.m_ClShowOthersAlpha / 100.0f);
+			IGraphics::CQuadItem QuadItem(Position.x-30, Position.y - 70, 22, 22);
+			Graphics()->QuadsSetRotation(GetAngle(vec2(1,0))+pi);
+			Graphics()->QuadsDraw(&QuadItem, 1);
+			Graphics()->QuadsEnd();
+		}
+		else if (Player.m_Direction == 1)
+		{
+			Graphics()->TextureSet(g_pData->m_aImages[IMAGE_ARROW].m_Id);
+			Graphics()->QuadsBegin();
+			if (OtherTeam)
+				Graphics()->SetColor(1.0f, 1.0f, 1.0f, g_Config.m_ClShowOthersAlpha / 100.0f);
+			IGraphics::CQuadItem QuadItem(Position.x+30, Position.y - 70, 22, 22);
 			Graphics()->QuadsDraw(&QuadItem, 1);
 			Graphics()->QuadsEnd();
 		}
@@ -801,7 +816,9 @@ void CPlayers::RenderPlayer(
 		{
 			Graphics()->TextureSet(g_pData->m_aImages[IMAGE_ARROW].m_Id);
 			Graphics()->QuadsBegin();
-			IGraphics::CQuadItem QuadItem(Position.x+15, Position.y - 70, 22, 22);
+			if (OtherTeam)
+				Graphics()->SetColor(1.0f, 1.0f, 1.0f, g_Config.m_ClShowOthersAlpha / 100.0f);
+			IGraphics::CQuadItem QuadItem(Position.x, Position.y - 70, 22, 22);
 			Graphics()->QuadsSetRotation(GetAngle(vec2(0,1))+pi);
 			Graphics()->QuadsDraw(&QuadItem, 1);
 			Graphics()->QuadsEnd();
@@ -861,7 +878,7 @@ void CPlayers::RenderPlayer(
 		{
 			float a = 1;
 			if(g_Config.m_ClNameplatesAlways == 0)
-				a = clamp(1-powf(distance(m_pClient->m_pControls->m_TargetPos, Position)/200.0f,16.0f), 0.0f, 1.0f);
+				a = clamp(1-powf(distance(m_pClient->m_pControls->m_TargetPos[g_Config.m_ClDummy], Position)/200.0f,16.0f), 0.0f, 1.0f);
 			
 			const char *pName = m_pClient->m_aClients[pPlayerInfo->m_ClientID].m_aName;
 			float tw = TextRender()->TextWidth(0, FontSize, pName, -1);
@@ -873,7 +890,7 @@ void CPlayers::RenderPlayer(
 			if (OtherTeam)
 			{
 				TextRender()->TextOutlineColor(0.0f, 0.0f, 0.0f, 0.2f);
-				TextRender()->TextColor(rgb.r, rgb.g, rgb.b, 0.4f);
+				TextRender()->TextColor(rgb.r, rgb.g, rgb.b, g_Config.m_ClShowOthersAlpha / 100.0f);
 			}
 			else
 			{
