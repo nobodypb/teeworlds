@@ -17,11 +17,6 @@ int CSnapshot::GetItemSize(int Index)
 	return (Offsets()[Index+1] - Offsets()[Index]) - sizeof(CSnapshotItem);
 }
 
-int CSnapshot::GetItemOffset(int Index)
-{
-	return GetItem(Index)->Offset();
-}
-
 int CSnapshot::GetItemIndex(int Key)
 {
 	// TODO: OPT: this should not be a linear search. very bad
@@ -41,9 +36,8 @@ int CSnapshot::Crc()
 	{
 		CSnapshotItem *pItem = GetItem(i);
 		int Size = GetItemSize(i);
-		int Offset = GetItemOffset(i);
 
-		for(int b = Offset/4; b < Size/4; b++)
+		for(int b = 0; b < Size/4; b++)
 			Crc += pItem->Data()[b];
 	}
 	return Crc;
@@ -148,7 +142,6 @@ void CSnapshotDelta::UndiffItem(int *pPast, int *pDiff, int *pOut, int Size)
 CSnapshotDelta::CSnapshotDelta()
 {
 	mem_zero(m_aItemSizes, sizeof(m_aItemSizes));
-	mem_zero(m_aItemSizeOffsets, sizeof(m_aItemSizeOffsets));
 	mem_zero(m_aSnapshotDataRate, sizeof(m_aSnapshotDataRate));
 	mem_zero(m_aSnapshotDataUpdates, sizeof(m_aSnapshotDataUpdates));
 	m_SnapshotCurrent = 0;
@@ -158,11 +151,6 @@ CSnapshotDelta::CSnapshotDelta()
 void CSnapshotDelta::SetStaticsize(int ItemType, int Size)
 {
 	m_aItemSizes[ItemType] = Size;
-}
-
-void CSnapshotDelta::SetOffset(int ItemType, int Offset)
-{
-	m_aItemSizeOffsets[ItemType] = Offset;
 }
 
 CSnapshotDelta::CData *CSnapshotDelta::EmptyDelta()
@@ -296,7 +284,7 @@ int CSnapshotDelta::UnpackDelta(CSnapshot *pFrom, CSnapshot *pTo, void *pSrcData
 	int *pEnd = (int *)(((char *)pSrcData + DataSize));
 
 	CSnapshotItem *pFromItem;
-	int Keep, ItemSize, ItemOffset;
+	int Keep, ItemSize;
 	int *pDeleted;
 	int ID, Type, Key;
 	int FromIndex;
@@ -351,24 +339,16 @@ int CSnapshotDelta::UnpackDelta(CSnapshot *pFrom, CSnapshot *pTo, void *pSrcData
 				return -2;
 			ItemSize = (*pData++) * 4;
 		}
-
-		if ((unsigned int)Type < sizeof(m_aItemSizeOffsets) && m_aItemSizeOffsets[Type])
-			ItemOffset = m_aItemSizeOffsets[Type];
-		else
-		{
-			ItemOffset = 0;
-		}
-
 		m_SnapshotCurrent = Type;
 
-		if(RangeCheck(pEnd, pData, ItemSize-ItemOffset) || ItemSize < 0) return -3;
+		if(RangeCheck(pEnd, pData, ItemSize) || ItemSize < 0) return -3;
 
 		Key = (Type<<16)|ID;
 
 		// create the item if needed
 		pNewData = Builder.GetItemData(Key);
 		if(!pNewData)
-			pNewData = (int *)Builder.NewItem(Key>>16, Key&0xffff, ItemSize, ItemOffset);
+			pNewData = (int *)Builder.NewItem(Key>>16, Key&0xffff, ItemSize);
 
 		//if(range_check(pEnd, pNewData, ItemSize)) return -4;
 
@@ -376,17 +356,17 @@ int CSnapshotDelta::UnpackDelta(CSnapshot *pFrom, CSnapshot *pTo, void *pSrcData
 		if(FromIndex != -1)
 		{
 			// we got an update so we need pTo apply the diff
-			UndiffItem((int *)pFrom->GetItem(FromIndex)->Data() + (ItemOffset / 4), pData, pNewData + (ItemOffset / 4), (ItemSize - ItemOffset) / 4);
+			UndiffItem((int *)pFrom->GetItem(FromIndex)->Data(), pData, pNewData, ItemSize/4);
 			m_aSnapshotDataUpdates[m_SnapshotCurrent]++;
 		}
 		else // no previous, just copy the pData
 		{
-			mem_copy(pNewData + (ItemOffset/4), pData, ItemSize-ItemOffset);
+			mem_copy(pNewData, pData, ItemSize);
 			m_aSnapshotDataRate[m_SnapshotCurrent] += ItemSize*8;
 			m_aSnapshotDataUpdates[m_SnapshotCurrent]++;
 		}
 
-		pData += (ItemSize-ItemOffset)/4;
+		pData += ItemSize/4;
 	}
 
 	// finish up
@@ -541,7 +521,7 @@ int CSnapshotBuilder::Finish(void *SpnapData)
 	return sizeof(CSnapshot) + OffsetSize + m_DataSize;
 }
 
-void *CSnapshotBuilder::NewItem(int Type, int ID, int Size, int Offset)
+void *CSnapshotBuilder::NewItem(int Type, int ID, int Size)
 {
 	if(m_DataSize + sizeof(CSnapshotItem) + Size >= CSnapshot::MAX_SIZE ||
 		m_NumItems+1 >= MAX_ITEMS)
@@ -555,7 +535,6 @@ void *CSnapshotBuilder::NewItem(int Type, int ID, int Size, int Offset)
 
 	mem_zero(pObj, sizeof(CSnapshotItem) + Size);
 	pObj->m_TypeAndID = (Type<<16)|ID;
-	pObj->m_Offset = Offset;
 	m_aOffsets[m_NumItems] = m_DataSize;
 	m_DataSize += sizeof(CSnapshotItem) + Size;
 	m_NumItems++;

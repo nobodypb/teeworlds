@@ -141,7 +141,6 @@ public:
 		void Reset();
 
 		// DDRace
-		int m_DDVersion;
 
 		NETADDR m_Addr;
 	};
@@ -263,10 +262,6 @@ public:
 
 	// DDRace
 
-	int GetDDVersionByName(const char *pName); //TODO: Move this to a shared class
-	unsigned int GetNetObjOffset(int Version, int NetObjType);
-
-	int GetClientDDVersion(int ClientID) { return m_aClients[ClientID].m_DDVersion;  };
 	void GetClientAddr(int ClientID, NETADDR *pAddr);
 	int m_aPrevStates[MAX_CLIENTS];
 	char *GetAnnouncementLine(char const *FileName);

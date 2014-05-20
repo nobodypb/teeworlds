@@ -332,8 +332,6 @@ public:
 	void ServerBrowserUpdate();
 
 	// DDRace
-	int GetDDVersionByName(const char *pName); //TODO: Move this to a shared class
-	unsigned int GetNetObjOffset(int Version, int NetObjType);
 
 	virtual const char* GetCurrentMap();
 	virtual int GetCurrentMapCrc();

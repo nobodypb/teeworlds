@@ -381,11 +381,6 @@ void CClient::SendInfo()
 	CMsgPacker Msg(NETMSG_INFO);
 	Msg.AddString(GameClient()->NetVersion(), 128);
 	Msg.AddString(g_Config.m_Password, 128);
-	char aBuf[32];
-	str_format(aBuf, sizeof(aBuf), "DDNET%d", CLIENT_VERSIONNR);
-	Msg.AddString(aBuf, 32);
-	str_format(aBuf, sizeof(aBuf), "Version: %s", aBuf);
-	m_pConsole->Print(IConsole::OUTPUT_LEVEL_DEBUG, "client", aBuf);
 	SendMsgEx(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH);
 }
 
@@ -862,10 +857,6 @@ void CClient::SnapSetStaticsize(int ItemType, int Size)
 	m_SnapshotDelta.SetStaticsize(ItemType, Size);
 }
 
-void CClient::SnapSetOffset(int ItemType, int Offset)
-{
-	m_SnapshotDelta.SetOffset(ItemType, Offset);
-}
 
 void CClient::DebugRender()
 {
@@ -1249,16 +1240,6 @@ void CClient::ProcessConnlessPacket(CNetChunk *pPacket)
 
 		if(!Up.Error())
 		{
-			const char *DDNetVersion = Up.GetString(CUnpacker::SANITIZE_CC);
-			if (!Up.Error())
-			{
-				Info.m_DDNetVersion = GetDDVersionByName(DDNetVersion);
-			}
-			else
-			{
-				Up.Undo();
-				Info.m_DDNetVersion = VERSION_VANILLA;
-			}
 			// sort players
 			qsort(Info.m_aClients, Info.m_NumClients, sizeof(*Info.m_aClients), PlayerScoreComp);
 
@@ -1331,17 +1312,6 @@ void CClient::ProcessConnlessPacket(CNetChunk *pPacket)
 
 		if(!Up.Error())
 		{
-			const char *DDNetVersion = Up.GetString(CUnpacker::SANITIZE_CC);
-			if (!Up.Error())
-			{
-				Info.m_DDNetVersion = GetDDVersionByName(DDNetVersion);
-			}
-			else
-			{
-				Up.Undo();
-				Info.m_DDNetVersion = VERSION_VANILLA;
-			}
-
 			// sort players
 			if (Offset + 24 >= Info.m_NumClients)
 				qsort(Info.m_aClients, Info.m_NumClients, sizeof(*Info.m_aClients), PlayerScoreComp);
@@ -3070,35 +3040,4 @@ void CClient::RaceRecordStop()
 bool CClient::DemoIsRecording()
 {
 	return m_DemoRecorder.IsRecording();
-}
-
-int CClient::GetDDVersionByName(const char *pName)
-{
-	char prefix[6];
-	strncpy(prefix, pName, 5);
-	prefix[5] = 0;
-
-	if (strcmp(prefix, "DDNET") == 0)
-	{
-		return atoi(pName + 5);
-	}
-	else
-		return VERSION_VANILLA;
-}
-
-unsigned int CClient::GetNetObjOffset(int Version, int NetObjType)
-{
-	if (Version < VERSION_DDNET_EXTMSG)
-	{
-		switch (NetObjType)
-		{
-		case NETOBJTYPE_CHARACTER:
-			CNetObj_Character Measure;
-			return (char*)(&Measure.m_Tick) - (char*)(&Measure);
-		default:
-			return 0;
-		}
-	}
-	else
-		return 0;
 }

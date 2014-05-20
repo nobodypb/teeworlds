@@ -904,16 +904,6 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 					return;
 				}
 
-				const char *pDDVersion = Unpacker.GetString(CUnpacker::SANITIZE_CC);
-				if (!Unpacker.Error())
-				{
-					m_aClients[ClientID].m_DDVersion = GetDDVersionByName(pDDVersion);
-				}
-				else
-				{
-					Unpacker.Undo();
-				}
-
 				m_aClients[ClientID].m_State = CClient::STATE_CONNECTING;
 				SendMap(ClientID);
 			}
@@ -1175,13 +1165,8 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 		{
 			const char* buf = Unpacker.GetString();
 
-			if (!Unpacker.Error() && strcmp(buf, "ExtMsg") == 0)
+			if (strcmp(buf, "ExtMsg") == 0)
 				Msg = Unpacker.GetInt() + 31;
-			else
-			{
-				Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "server", "Recieved non ExtMsg message with msgid = 31");
-				Unpacker.Undo();
-			}
 		}
 
 		// game message
@@ -1291,9 +1276,6 @@ void CServer::SendServerInfo(const NETADDR *pAddr, int Token, bool Extended, int
 			str_format(aBuf, sizeof(aBuf), "%d", GameServer()->IsClientPlayer(i)?1:0); p.AddString(aBuf, 2); // is player?
 		}
 	}
-
-	str_format(aBuf, sizeof(aBuf), "DDNET%d", GameServer()->DDNetVersion());
-	p.AddString(aBuf, 10);
 
 	Packet.m_ClientID = -1;
 	Packet.m_Address = *pAddr;
@@ -2030,35 +2012,4 @@ char *CServer::GetAnnouncementLine(char const *pFileName)
 int* CServer::GetIdMap(int ClientID)
 {
 	return (int*)(IdMap + VANILLA_MAX_CLIENTS * ClientID);
-}
-
-int CServer::GetDDVersionByName(const char *pName)
-{
-	char prefix[6];
-	strncpy(prefix, pName, 5);
-	prefix[5] = 0;
-
-	if (strcmp(prefix, "DDNET") == 0)
-	{
-		return atoi(pName + 5);
-	}
-	else
-		return VERSION_VANILLA;
-}
-
-unsigned int CServer::GetNetObjOffset(int Version, int NetObjType)
-{
-	if (Version < VERSION_DDNET_EXTMSG)
-	{
-		switch (NetObjType)
-		{
-		case NETOBJTYPE_CHARACTER:
-			CNetObj_Character Measure;
-			return (char*)(&Measure.m_Tick) - (char*)(&Measure);
-		default:
-			return 0;
-		}
-	}
-	else
-		return 0;
 }

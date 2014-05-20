@@ -98,8 +98,6 @@ int CUnpacker::GetInt()
 	if(m_Error)
 		return 0;
 
-	m_pLast = m_pCurrent;
-
 	if(m_pCurrent >= m_pEnd)
 	{
 		m_Error = 1;
@@ -122,14 +120,12 @@ const char *CUnpacker::GetString(int SanitizeType)
 		return "";
 
 	char *pPtr = (char *)m_pCurrent;
-	m_pLast = m_pCurrent; //Save the last Position to jump back on error.
-
 	while(*m_pCurrent) // skip the string
 	{
 		m_pCurrent++;
 		if(m_pCurrent == m_pEnd)
 		{
-			m_Error = 1;
+			m_Error = 1;;
 			return "";
 		}
 	}
@@ -149,7 +145,6 @@ const unsigned char *CUnpacker::GetRaw(int Size)
 	if(m_Error)
 		return 0;
 
-	m_pLast = m_pCurrent;
 	// check for nasty sizes
 	if(Size < 0 || m_pCurrent+Size > m_pEnd)
 	{
@@ -160,17 +155,4 @@ const unsigned char *CUnpacker::GetRaw(int Size)
 	// "unpack" the data
 	m_pCurrent += Size;
 	return pPtr;
-}
-
-int CUnpacker::Undo()
-{
-	if (m_pLast > m_pEnd)
-		return 0;
-
-	m_pCurrent = m_pLast;
-
-	if (m_Error)
-		m_Error = 0;
-
-	return 1;
 }

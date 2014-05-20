@@ -492,7 +492,6 @@ void CPlayers::RenderPlayer(
 	}
 
 	bool Stationary = Player.m_VelX <= 1 && Player.m_VelX >= -1;
-	bool Frozen = Player.m_Frozen != 0;
 	bool InAir = !Collision()->CheckPoint(Player.m_X, Player.m_Y+16);
 	bool WantOtherDir = (Player.m_Direction == -1 && Vel.x > 0) || (Player.m_Direction == 1 && Vel.x < 0);
 
@@ -503,7 +502,7 @@ void CPlayers::RenderPlayer(
 
 	if(InAir)
 		State.Add(&g_pData->m_aAnimations[ANIM_INAIR], 0, 1.0f); // TODO: some sort of time here
-	else if(Stationary || Frozen)
+	else if(Stationary)
 		State.Add(&g_pData->m_aAnimations[ANIM_IDLE], 0, 1.0f); // TODO: some sort of time here
 	else if(!WantOtherDir)
 		State.Add(&g_pData->m_aAnimations[ANIM_WALK], WalkTime, 1.0f);
@@ -523,7 +522,7 @@ void CPlayers::RenderPlayer(
 	}
 
 	// do skidding
-	if(!InAir && WantOtherDir && !Frozen && length(Vel*50) > 500.0f)
+	if(!InAir && WantOtherDir && length(Vel*50) > 500.0f)
 	{
 		static int64 SkidSoundTime = 0;
 		if(time_get()-SkidSoundTime > time_freq()/10)

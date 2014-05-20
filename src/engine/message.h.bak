@@ -8,10 +8,10 @@
 class CMsgPacker : public CPacker
 {
 public:
-	CMsgPacker(int Type, bool ExtMsg = false)
+	CMsgPacker(int Type)
 	{
 		Reset();
-		if (!ExtMsg || Type < 31)
+		if (Type < 31)
 			AddInt(Type);
 		else
 		{

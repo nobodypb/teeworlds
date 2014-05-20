@@ -1463,10 +1463,6 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 			pPlayer->m_LastKill = Server()->Tick();
 			pPlayer->KillCharacter(WEAPON_SELF);
 		}
-		else if (MsgID == NETMSGTYPE_CL_DD_PAUSE)
-		{
-			Console()->ExecuteLine("pause", ClientID);
-		}
 	}
 	else
 	{
@@ -2466,7 +2462,6 @@ bool CGameContext::IsClientPlayer(int ClientID)
 
 const char *CGameContext::GameType() { return m_pController && m_pController->m_pGameType ? m_pController->m_pGameType : ""; }
 const char *CGameContext::Version() { return GAME_VERSION; }
-const int CGameContext::DDNetVersion() { return SERVER_VERSIONNR; }
 const char *CGameContext::NetVersion() { return GAME_NETVERSION; }
 
 IGameServer *CreateGameServer() { return new CGameContext; }

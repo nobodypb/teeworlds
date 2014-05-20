@@ -31,7 +31,6 @@ class CUnpacker
 {
 	const unsigned char *m_pStart;
 	const unsigned char *m_pCurrent;
-	const unsigned char *m_pLast;
 	const unsigned char *m_pEnd;
 	int m_Error;
 public:
@@ -47,8 +46,6 @@ public:
 	const char *GetString(int SanitizeType = SANITIZE);
 	const unsigned char *GetRaw(int Size);
 	bool Error() const { return m_Error; }
-
-	int Undo();
 };
 
 #endif

@@ -1386,15 +1386,9 @@ void CGameClient::SendDummyInfo(bool Start)
 	}
 }
 
-void CGameClient::SendKill(int ClientID) //TODO: Remove obsolete ClientID (Also why spam the server with kill command when ur client knows we are dead?)
+void CGameClient::SendKill(int ClientID)
 {
 	CNetMsg_Cl_Kill Msg;
-	Client()->SendPackMsg(&Msg, MSGFLAG_VITAL);
-}
-
-void CGameClient::SendDDPause()
-{
-	CNetMsg_Cl_DD_Pause Msg;
 	Client()->SendPackMsg(&Msg, MSGFLAG_VITAL);
 }
 
@@ -1406,11 +1400,6 @@ void CGameClient::ConTeam(IConsole::IResult *pResult, void *pUserData)
 void CGameClient::ConKill(IConsole::IResult *pResult, void *pUserData)
 {
 	((CGameClient*)pUserData)->SendKill(-1);
-}
-
-void CGameClient::ConDDPause(IConsole::IResult *pResult, void *pUserData)
-{
-	((CGameClient*)pUserData)->SendDDPause();
 }
 
 void CGameClient::ConchainSpecialInfoupdate(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData)

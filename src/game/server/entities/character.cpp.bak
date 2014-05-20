@@ -824,8 +824,7 @@ void CCharacter::TickDefered()
 		m_Core.Write(&Current);
 
 		// only allow dead reackoning for a top of 3 seconds
-		if(m_Core.m_pReset || m_ReckoningTick+Server()->TickSpeed()*3 < Server()->Tick() || mem_comp(&Predicted, &Current, sizeof(CNetObj_Character)) != 0
-			|| (m_Core.m_Frozen > 0 && !(Server()->Tick() % 16))) //Don't stress network
+		if(m_Core.m_pReset || m_ReckoningTick+Server()->TickSpeed()*3 < Server()->Tick() || mem_comp(&Predicted, &Current, sizeof(CNetObj_Character)) != 0)
 		{
 			m_ReckoningTick = Server()->Tick();
 			m_SendCore = m_Core;
@@ -1030,18 +1029,9 @@ void CCharacter::Snap(int SnappingClient)
 	if (m_Paused)
 		return;
 
-	int ClientDDVersion = GameServer()->Server()->GetClientDDVersion(SnappingClient);
-
-	size_t Offset = (size_t)GameServer()->Server()->GetNetObjOffset(ClientDDVersion, NETOBJTYPE_CHARACTER);
-
-	CNetObj_Character *pCharacter = static_cast<CNetObj_Character *>(Server()->SnapNewItem(NETOBJTYPE_CHARACTER, id, sizeof(CNetObj_Character) - Offset));
+	CNetObj_Character *pCharacter = static_cast<CNetObj_Character *>(Server()->SnapNewItem(NETOBJTYPE_CHARACTER, id, sizeof(CNetObj_Character)));
 	if(!pCharacter)
 		return;
-
-	if (Offset != 0)
-	{
-		pCharacter = (CNetObj_Character*)(((char*)pCharacter) - Offset);
-	}
 
 	// write down the m_Core
 	if(!m_ReckoningTick || GameServer()->m_World.m_Paused)
@@ -1049,12 +1039,12 @@ void CCharacter::Snap(int SnappingClient)
 		// no dead reckoning when paused because the client doesn't know
 		// how far to perform the reckoning
 		pCharacter->m_Tick = 0;
-		m_Core.Write(pCharacter, ClientDDVersion);
+		m_Core.Write(pCharacter);
 	}
 	else
 	{
 		pCharacter->m_Tick = m_ReckoningTick;
-		m_SendCore.Write(pCharacter, ClientDDVersion);
+		m_SendCore.Write(pCharacter);
 	}
 
 	// set emote
@@ -1957,7 +1947,6 @@ bool CCharacter::Freeze(int Seconds)
 		m_Armor = 0;
 		m_FreezeTime = Seconds == -1 ? Seconds : Seconds * Server()->TickSpeed();
 		m_FreezeTick = Server()->Tick();
-		m_Core.m_Frozen = max(0, m_FreezeTime);
 		return true;
 	}
 	return false;
@@ -1983,7 +1972,6 @@ bool CCharacter::UnFreeze()
 		m_FreezeTime = 0;
 		m_FreezeTick = 0;
 		if (m_Core.m_ActiveWeapon==WEAPON_HAMMER) m_ReloadTimer = 0;
-		m_Core.m_Frozen = 0;
 		return true;
 	}
 	return false;

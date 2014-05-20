@@ -11,13 +11,11 @@ class CSnapshotItem
 {
 public:
 	int m_TypeAndID;
-	int m_Offset;
 
 	int *Data() { return (int *)(this+1); }
 	int Type() { return m_TypeAndID>>16; }
 	int ID() { return m_TypeAndID&0xffff; }
 	int Key() { return m_TypeAndID; }
-	int Offset() { return m_Offset; }
 };
 
 
@@ -41,7 +39,6 @@ public:
 	CSnapshotItem *GetItem(int Index);
 	int GetItemSize(int Index);
 	int GetItemIndex(int Key);
-	int GetItemOffset(int Index);
 
 	int Crc();
 	void DebugDump();
@@ -65,7 +62,6 @@ public:
 private:
 	// TODO: strange arbitrary number
 	short m_aItemSizes[64];
-	short m_aItemSizeOffsets[64];
 	int m_aSnapshotDataRate[0xffff];
 	int m_aSnapshotDataUpdates[0xffff];
 	int m_SnapshotCurrent;
@@ -78,7 +74,6 @@ public:
 	int GetDataRate(int Index) { return m_aSnapshotDataRate[Index]; }
 	int GetDataUpdates(int Index) { return m_aSnapshotDataUpdates[Index]; }
 	void SetStaticsize(int ItemType, int Size);
-	void SetOffset(int ItemType, int Offset);
 	CData *EmptyDelta();
 	int CreateDelta(class CSnapshot *pFrom, class CSnapshot *pTo, void *pData);
 	int UnpackDelta(class CSnapshot *pFrom, class CSnapshot *pTo, void *pData, int DataSize);
@@ -131,7 +126,7 @@ class CSnapshotBuilder
 public:
 	void Init();
 
-	void *NewItem(int Type, int ID, int Size, int Offset = 0);
+	void *NewItem(int Type, int ID, int Size);
 
 	CSnapshotItem *GetItem(int Index);
 	int *GetItemData(int Key);

@@ -93,9 +93,7 @@ public:
 	template<class T>
 	int SendPackMsgOne(T *pMsg, int Flags, int ClientID)
 	{
-		CClientInfo info;
-		GetClientInfo(ClientID, &info);
-		CMsgPacker Packer(pMsg->MsgID(), (info.m_ClientVersion >= VERSION_DDNET_EXTMSG));
+		CMsgPacker Packer(pMsg->MsgID());
 		if(pMsg->Pack(&Packer))
 			return -1;
 		return SendMsg(&Packer, Flags, ClientID);
@@ -158,8 +156,7 @@ public:
 	virtual bool DemoRecorder_IsRecording() = 0;
 
 	// DDRace
-	virtual unsigned int GetNetObjOffset(int Version, int NetObjType) = 0;
-	virtual int GetClientDDVersion(int ClientID) = 0;
+
 	virtual void GetClientAddr(int ClientID, NETADDR *pAddr) = 0;
 
 	virtual int* GetIdMap(int ClientID) = 0;
@@ -192,7 +189,6 @@ public:
 
 	virtual const char *GameType() = 0;
 	virtual const char *Version() = 0;
-	virtual const int DDNetVersion() = 0;
 	virtual const char *NetVersion() = 0;
 
 	// DDRace

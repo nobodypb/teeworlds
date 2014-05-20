@@ -197,7 +197,6 @@ public:
 
 	virtual const char *GameType();
 	virtual const char *Version();
-	virtual const int DDNetVersion();
 	virtual const char *NetVersion();
 
 	// DDRace

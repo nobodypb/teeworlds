@@ -243,7 +243,6 @@ public:
 	void SendInfo(bool Start);
 	virtual void SendDummyInfo(bool Start);
 	void SendKill(int ClientID);
-	void SendDDPause();
 
 	// pointers to all systems
 	class CGameConsole *m_pGameConsole;

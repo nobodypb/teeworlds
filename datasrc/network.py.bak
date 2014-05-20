@@ -123,9 +123,6 @@ Objects = [
 	]),
 
 	NetObject("CharacterCore", [
-		NetIntAny("m_Frozen"),
-		NetBool("m_Solo"),
-	
 		NetIntAny("m_Tick"),
 		NetIntAny("m_X"),
 		NetIntAny("m_Y"),
@@ -344,7 +341,6 @@ Messages = [
 		NetStringStrict("m_Reason"),
 	]),
 
-	#DDNET Messages
 	NetMessage("Cl_IsDDNet", []),
 
 	NetMessage("Sv_DDRaceTime", [
@@ -367,13 +363,6 @@ Messages = [
 
 	NetMessage("Cl_ShowOthers", [
 		NetBool("m_Show"),
-	]),
-
-	NetMessage("Cl_DD_Pause", []),
-
-	NetMessage("Cl_Whisper", [
-		NetIntRange("m_TargetID", 0, 'MAX_CLIENTS'),
-		NetStringHalfStrict("m_pMessage"),
-	]),
+	])
 # Can't add any NetMessages here!
 ]

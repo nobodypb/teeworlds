@@ -220,13 +220,11 @@ public:
 	void Move();
 
 	void Read(const CNetObj_CharacterCore *pObjCore);
-	void Write(CNetObj_CharacterCore *pObjCore, int pVersion = VERSION_VANILLA);
+	void Write(CNetObj_CharacterCore *pObjCore);
 	void Quantize();
 
 	// DDRace
 
-	int m_Frozen;
-	bool m_Solo;
 	int m_Id;
 	bool m_pReset;
 	class CCollision *Collision() { return m_pCollision; }

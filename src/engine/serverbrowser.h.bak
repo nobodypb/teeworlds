@@ -49,9 +49,6 @@ public:
 	char m_aVersion[32];
 	char m_aAddress[NETADDR_MAXSTRSIZE];
 	CClient m_aClients[MAX_CLIENTS];
-
-	//DDRace (DDNet)
-	int m_DDNetVersion;
 };
 
 class IServerBrowser : public IInterface
